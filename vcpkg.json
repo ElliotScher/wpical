@@ -1,0 +1,22 @@
+{
+  "dependencies": [
+    "apriltag",
+    {
+      "name": "ceres",
+      "features": [
+        "eigensparse"
+      ]
+    },
+    {
+      "name": "opencv4",
+      "features": [
+        "ffmpeg",
+        "contrib"
+      ]
+    },
+    "eigen3",
+    "nlohmann-json",
+    "glfw3",
+    "imgui"
+  ]
+}
