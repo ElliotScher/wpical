@@ -4,41 +4,61 @@ set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
 
 project(WPIcal)
 
-set(OSBitness 64)
-if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-    set(OSBitness 32)
+include(cmake/modules/GenResources.cmake)
+generate_resources(src/resources generated/main/cpp OV ov outlineviewer_resources_src)
+
+if(WIN32)
+    set(outlineviewer_rc src/win/outlineviewer.rc)
+elseif(APPLE)
+    set(MACOSX_BUNDLE_ICON_FILE ov.icns)
+    set(APP_ICON_MACOSX src/mac/ov.icns)
+    set_source_files_properties(${APP_ICON_MACOSX} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 endif()
 
-set(FullOutputDir "${CMAKE_SOURCE_DIR}/bin/${CMAKE_SYSTEM_NAME}${OSBitness}/${CMAKE_BUILD_TYPE}")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${FullOutputDir}")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${FullOutputDir}")
+# Add include directories for the project
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/include)
 
-find_package(OpenCV CONFIG REQUIRED)
-find_package(apriltag CONFIG REQUIRED)
-find_package(ceres CONFIG REQUIRED)
+# Add subdirectories for external libraries
+add_subdirectory(wpigui)
+add_subdirectory(imgui)
+
+# Find required packages
+find_package(apriltag REQUIRED)
 find_package(Eigen3 CONFIG REQUIRED)
+find_package(Ceres CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(glog REQUIRED)
 
-add_executable(
-    ${PROJECT_NAME}
-    src/cpp/main.cpp
-    src/cpp/fieldcalibration.cpp
+# Add the executable and specify the source files
+add_executable(${PROJECT_NAME} 
+    src/cpp/WPIcal.cpp 
+    src/cpp/fieldcalibration.cpp 
     src/cpp/cameracalibration.cpp
+    ${outlineviewer_resources_src}
+    ${outlineviewer_rc}
 )
 
-target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_SOURCE_DIR}/src/include
-    ${CMAKE_SOURCE_DIR}/wpigui/src/include
+# Include directories
+target_include_directories(${PROJECT_NAME} PUBLIC 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/build/vcpkg_installed/x64-windows/include
 )
 
+# Link the libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    opencv_core
-    opencv_imgproc
-    opencv_highgui
-    opencv_video
-    opencv_videoio
-    Ceres::ceres
-    Eigen3::Eigen
-    nlohmann_json::nlohmann_json
+    wpigui
+    imgui
     apriltag::apriltag
+    Eigen3::Eigen
+    Ceres::ceres
+    nlohmann_json::nlohmann_json
+    glog::glog
+    ${OpenCV_LIBS}
 )
+
+if(WIN32)
+    set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE YES)
+elseif(APPLE)
+    set_target_properties(${PROJECT_NAME} PROPERTIES MACOSX_BUNDLE YES OUTPUT_NAME "WPIcal")
+endif()

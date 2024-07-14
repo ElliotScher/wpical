@@ -1,5 +1,18 @@
 {
   "dependencies": [
+    {
+      "name": "imgui",
+      "features": [
+        "glfw-binding",
+        "opengl3-binding",
+        "opengl2-binding",
+        "dx11-binding"
+      ]
+    },
+    "glfw3",
+    "glad",
+    "stb",
+    "implot",
     "apriltag",
     {
       "name": "ceres",
@@ -7,6 +20,7 @@
         "eigensparse"
       ]
     },
+    "glog",
     {
       "name": "opencv4",
       "features": [
@@ -15,8 +29,6 @@
       ]
     },
     "eigen3",
-    "nlohmann-json",
-    "glfw3",
-    "imgui"
+    "nlohmann-json"
   ]
 }
