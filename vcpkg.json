@@ -5,6 +5,7 @@
     "stb",
     "implot",
     "apriltag",
+    "python3",
     {
       "name": "ceres",
       "features": [
