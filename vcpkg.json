@@ -1,14 +1,5 @@
 {
   "dependencies": [
-    {
-      "name": "imgui",
-      "features": [
-        "glfw-binding",
-        "opengl3-binding",
-        "opengl2-binding",
-        "dx11-binding"
-      ]
-    },
     "glfw3",
     "glad",
     "stb",
