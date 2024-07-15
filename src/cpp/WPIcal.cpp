@@ -12,19 +12,21 @@
 
 namespace gui = wpi::gui;
 
-const char* GetWPILibVersion();
+const char *GetWPILibVersion();
 
-namespace ov {
-std::string_view GetResource_ov_16_png();
-std::string_view GetResource_ov_32_png();
-std::string_view GetResource_ov_48_png();
-std::string_view GetResource_ov_64_png();
-std::string_view GetResource_ov_128_png();
-std::string_view GetResource_ov_256_png();
-std::string_view GetResource_ov_512_png();
-}  // namespace ov
+namespace ov
+{
+  std::string_view GetResource_ov_16_png();
+  std::string_view GetResource_ov_32_png();
+  std::string_view GetResource_ov_48_png();
+  std::string_view GetResource_ov_64_png();
+  std::string_view GetResource_ov_128_png();
+  std::string_view GetResource_ov_256_png();
+  std::string_view GetResource_ov_512_png();
+} // namespace ov
 
-static void DisplayGui() {
+static void DisplayGui()
+{
   ImGui::GetStyle().WindowRounding = 0;
 
   // fill entire OS window with this window
@@ -42,7 +44,8 @@ static void DisplayGui() {
   // main menu
   ImGui::BeginMenuBar();
   gui::EmitViewMenu();
-  if (ImGui::BeginMenu("View")) {
+  if (ImGui::BeginMenu("View"))
+  {
     ImGui::EndMenu();
   }
   ImGui::EndMenuBar();
@@ -64,22 +67,26 @@ static void DisplayGui() {
   static int pinnedTag = 1;
   static int fps = 4;
 
-  if (ImGui::Button("Select Camera Calibration Video")) {
+  if (ImGui::Button("Select Camera Calibration Video"))
+  {
     configFileSelector = std::make_unique<pfd::open_file>(
         "Select Camera Calibration Video", "",
         std::vector<std::string>{"Video Files", "*.mp4 *.mov *.m4v *.mkv"}, pfd::opt::none);
   }
 
-  if (configFileSelector) {
+  if (configFileSelector)
+  {
     auto selectedFiles = configFileSelector->result();
-    if (!selectedFiles.empty()) {
+    if (!selectedFiles.empty())
+    {
       selectedConfigFile = selectedFiles[0];
     }
     configFileSelector.reset();
   }
 
-  if (!selectedConfigFile.empty()) {
-    ImGui::Text("Selected File: %s", selectedConfigFile.c_str());
+  if (!selectedConfigFile.empty())
+  {
+    ImGui::TextWrapped("Selected File: %s", selectedConfigFile.c_str());
   }
 
   ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
@@ -91,99 +98,137 @@ static void DisplayGui() {
   ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
   ImGui::InputInt("Board Height (squares)", &boardHeight);
 
-  if (ImGui::Button("Select Field Map JSON")) {
+  if (ImGui::Button("Select Field Map JSON"))
+  {
     fieldMapSelector = std::make_unique<pfd::open_file>(
         "Select Json File", "",
         std::vector<std::string>{"JSON Files", "*.json"}, pfd::opt::none);
   }
 
-  if (fieldMapSelector) {
+  if (fieldMapSelector)
+  {
     auto selectedFiles = fieldMapSelector->result();
-    if (!selectedFiles.empty()) {
+    if (!selectedFiles.empty())
+    {
       selectedFieldMap = selectedFiles[0];
     }
     fieldMapSelector.reset();
   }
 
-  if (!selectedFieldMap.empty()) {
-    ImGui::Text("Selected Field Map: %s", selectedFieldMap.c_str());
+  if (!selectedFieldMap.empty())
+  {
+    ImGui::TextWrapped("Selected Field Map: %s", selectedFieldMap.c_str());
   }
 
-  if (ImGui::Button("Select Field Calibration Folder")) {
+  if (ImGui::Button("Select Field Calibration Folder"))
+  {
     calibrationDirectorySelector = std::make_unique<pfd::select_folder>(
         "Select Field Calibration Folder", "");
   }
 
-  if (calibrationDirectorySelector) {
+  if (calibrationDirectorySelector)
+  {
     auto selectedFiles = calibrationDirectorySelector->result();
-    if (!selectedFiles.empty()) {
+    if (!selectedFiles.empty())
+    {
       selectedCalibrationDirectory = selectedFiles;
     }
     calibrationDirectorySelector.reset();
   }
-  
-  if (!selectedCalibrationDirectory.empty()) {
-    ImGui::Text("Selected Folder: %s",
-                selectedCalibrationDirectory.c_str());
+
+  if (!selectedCalibrationDirectory.empty())
+  {
+    ImGui::TextWrapped("Selected Folder: %s",
+                       selectedCalibrationDirectory.c_str());
   }
   ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
   ImGui::InputInt("Pinned Tag", &pinnedTag);
   ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
   ImGui::InputInt("Calibration FPS", &fps);
 
-  if (ImGui::Button("Calibrate!!!")) {
-    if (!selectedCalibrationDirectory.empty() && !selectedConfigFile.empty() && !selectedFieldMap.empty() && pinnedTag > 0 && pinnedTag <= 16) {
-    nlohmann::json cameraJson = cameracalibration::calibrate(
-      selectedConfigFile.c_str(),
-      squareWidth,
-      markerWidth,
-      boardWidth,
-      boardHeight
-    );
-    
-    if (fieldcalibration::calibrate(
-        selectedCalibrationDirectory.c_str(),
-        selectedCalibrationDirectory + "\\output.json",
-        cameraJson,
-        selectedFieldMap.c_str(),
-        pinnedTag,
-        fps
-    ) == -1) {
-      ImGui::OpenPopup("Error");
-    };
+  if (ImGui::Button("Calibrate!!!"))
+  {
+    if (!selectedCalibrationDirectory.empty() && !selectedConfigFile.empty() && !selectedFieldMap.empty() && pinnedTag > 0 && pinnedTag <= 16)
+    {
+      nlohmann::json cameraJson = cameracalibration::calibrate(
+          selectedConfigFile.c_str(),
+          squareWidth,
+          markerWidth,
+          boardWidth,
+          boardHeight);
+
+      int calibrationOutput = fieldcalibration::calibrate(
+          selectedCalibrationDirectory.c_str(),
+          selectedCalibrationDirectory + "/output.json",
+          cameraJson,
+          selectedFieldMap.c_str(),
+          pinnedTag,
+          fps);
+
+      if (calibrationOutput == -1)
+      {
+        ImGui::OpenPopup("Error");
+      }
+      else if (calibrationOutput == 0)
+      {
+        ImGui::OpenPopup("Success");
+      }
     }
   }
-  if (selectedCalibrationDirectory.empty() || selectedConfigFile.empty() || selectedFieldMap.empty()) {
-    ImGui::Text("Some inputs are empty! please enter your camera calibration video, field map, and field calibration directory");
-  } else if (!(pinnedTag > 0 && pinnedTag <= 16)) {
-    ImGui::Text("Make sure the pinned tag is a valid april tag (1-16)");
-  } else if (fps < 0) {
-    ImGui::Text("Make sure FPS is at least 1");
-  } else {
-    ImGui::Text("Calibration Ready");
+  if (selectedCalibrationDirectory.empty() || selectedConfigFile.empty() || selectedFieldMap.empty())
+  {
+    ImGui::TextWrapped("Some inputs are empty! please enter your camera calibration video, field map, and field calibration directory");
+  }
+  else if (!(pinnedTag > 0 && pinnedTag <= 16))
+  {
+    ImGui::TextWrapped("Make sure the pinned tag is a valid april tag (1-16)");
+  }
+  else if (fps < 0)
+  {
+    ImGui::TextWrapped("Make sure FPS is at least 1");
+  }
+  else
+  {
+    ImGui::TextWrapped("Calibration Ready");
   }
 
-  if (ImGui::BeginPopupModal("Error", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text("Please ensure that the detection FPS is smaller than the field video FPS.");
-            ImGui::Separator();
-            if (ImGui::Button("OK", ImVec2(120, 0))) {
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
+  if (ImGui::BeginPopupModal("Error", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+  {
+    ImGui::TextWrapped("Please ensure that the detection FPS is smaller than the field video FPS.");
+    ImGui::Separator();
+    if (ImGui::Button("OK", ImVec2(120, 0)))
+    {
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
+  }
+
+  if (ImGui::BeginPopupModal("Success", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+  {
+    ImGui::TextWrapped("Success, output JSON generated in field calibration video directory");
+    ImGui::Separator();
+    if (ImGui::Button("OK", ImVec2(120, 0)))
+    {
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
   }
 
   ImGui::End();
 }
 
 #ifdef _WIN32
-int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine, int nCmdShow) {
+int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine, int nCmdShow)
+{
   int argc = __argc;
-  char** argv = __argv;
+  char **argv = __argv;
 #else
-int main(int argc, char** argv) {
+int main(int argc, char **argv)
+{
 #endif
   std::string_view saveDir;
-  if (argc == 2) {
+  if (argc == 2)
+  {
     saveDir = argv[1];
   }
 
