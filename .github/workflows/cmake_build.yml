@@ -27,15 +27,9 @@ jobs:
   #       uses: seanmiddleditch/gha-setup-ninja@v4
 
   #     - name: Configure and Build Project
-  #       uses: threeal/cmake-action@main
-  #       with:
-  #         source-dir: .
-  #         build-dir: ./build
-  #         generator: Ninja
-  #         c-compiler: gcc
-  #         cxx-compiler: g++
-  #         build-args: |
-  #           '-DCMAKE_BUILD_TYPE=Release'
+  #       run: |
+  #         cmake -S . -B ./build -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release
+  #         cmake --build build --config Release
 
   build-windows:
     name: Build Project
@@ -63,7 +57,7 @@ jobs:
 
       - name: Configure and Build Project
         run: |
-          cmake -S . -B ./build -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B ./build -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release -Wno-dev
           cmake --build build --config Release
 
       - name: Generate Installer
