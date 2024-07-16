@@ -2,7 +2,7 @@ name: Build
 on:
   push:
 jobs:
-  build-project:
+  build-linux:
     name: Build Project
     runs-on: ubuntu-latest
     steps:
@@ -13,7 +13,6 @@ jobs:
         run: |
           chmod +x ./setup.sh
           ./setup.sh
-          
 
       - name: Configure and Build Project
         uses: threeal/cmake-action@main
