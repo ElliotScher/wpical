@@ -60,16 +60,11 @@ jobs:
           bootstrap-vcpkg.sh
           vcpkg integrate install
           cd ..
-          cmake -DCMAKE_BUILD_TYPE=Release
 
       - name: Configure and Build Project
-        uses: threeal/cmake-action@main
-        with:
-          source-dir: .
-          build-dir: ./build
-          generator: Visual Studio 17 2022
-          c-compiler: MSVC
-          cxx-compiler: MSVC
+        run: |
+          cmake -S . -B ./build -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
 
       - name: Generate Installer
         run: |
