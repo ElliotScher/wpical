@@ -38,4 +38,4 @@ endif()
 
 install(TARGETS wpigui EXPORT wpigui)
 export(TARGETS wpigui FILE wpigui.cmake NAMESPACE wpigui::)
-install(DIRECTORY src/main/native/include/ DESTINATION "${include_dest}/wpigui")
+install(DIRECTORY src/main/native/include/ DESTINATION "include/wpigui")

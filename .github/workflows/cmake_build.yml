@@ -2,34 +2,37 @@ name: Build
 on:
   push:
 jobs:
-  # build-linux:
-  #   name: Build Project
-  #   runs-on: ubuntu-latest
-  #   env:
-  #     VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-  #   steps:
-  #     - name: Export GitHub Actions cache environment variables
-  #       uses: actions/github-script@v7
-  #       with:
-  #         script: |
-  #           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-  #           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+  build-linux:
+    name: Build Project
+    runs-on: ubuntu-latest
+    env:
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+    steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-  #     - name: Checkout
-  #       uses: actions/checkout@v4.1.7
+      - name: Checkout
+        uses: actions/checkout@v4.1.7
 
-  #     - name: Run setup.sh
-  #       run: |
-  #         chmod +x ./setup.sh
-  #         ./setup.sh
+      - name: Install Packages
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git
+          cd vcpkg
+          bootstrap-vcpkg.sh
+          vcpkg integrate install
+          cd ..
 
-  #     - name: Setup Ninja
-  #       uses: seanmiddleditch/gha-setup-ninja@v4
+      - name: Setup Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v4
 
-  #     - name: Configure and Build Project
-  #       run: |
-  #         cmake -S . -B ./build -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release
-  #         cmake --build build --config Release
+      - name: Configure and Build Project
+        run: |
+          cmake -S . -B ./build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
 
   build-windows:
     name: Build Project
