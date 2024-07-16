@@ -64,3 +64,8 @@ jobs:
         run: |
           choco install innosetup
           C:/"Program Files (x86)"/"Inno Setup 6"/ISCC.exe windowsiss.iss
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          path: D:\a\wpical\wpical\Output\mysetup.exe
