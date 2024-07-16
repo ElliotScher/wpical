@@ -37,9 +37,11 @@ jobs:
         - name: Install Packages
           run: |
             git clone https://github.com/microsoft/vcpkg.git
-            ./vcpkg/vcpkg bootstrap-vcpkg.sh
-            ./vcpkg/vcpkg integrate install
-            ./vcpkg/vcpkg install
+            cd vcpkg
+            ./bootstrap-vcpkg.sh
+            ./vcpkg integrate install
+            ./vcpkg install
+            cd ..
 
         - name: Configure and Build Project
           uses: threeal/cmake-action@main
