@@ -50,7 +50,7 @@ Source: "build\Release\avutil-58.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "build\Release\ceres.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "build\Release\gflags.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "build\Release\glog.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "build\Release\imgui.ini"; DestDir: "{app}"; Flags: ignoreversion
+; Source: "build\Release\imgui.ini"; DestDir: "{app}"; Flags: ignoreversion
 Source: "build\Release\jpeg62.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "build\Release\liblzma.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "build\Release\libpng16.dll"; DestDir: "{app}"; Flags: ignoreversion
