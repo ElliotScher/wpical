@@ -1,0 +1,30 @@
+CMake Error at scripts/cmake/vcpkg_execute_build_process.cmake:134 (message):
+    Command failed: /usr/local/bin/cmake --build . --config Release --target install -- -v -j5
+    Working Directory: /home/runner/work/wpical/wpical/vcpkg/buildtrees/opencv4/x64-linux-rel
+    See logs for more information:
+      /home/runner/work/wpical/wpical/vcpkg/buildtrees/opencv4/install-x64-linux-rel-out.log
+Call Stack (most recent call first):
+  /home/runner/work/wpical/wpical/vcpkg_installed/x64-linux/share/vcpkg-cmake/vcpkg_cmake_build.cmake:74 (vcpkg_execute_build_process)
+  /home/runner/work/wpical/wpical/vcpkg_installed/x64-linux/share/vcpkg-cmake/vcpkg_cmake_install.cmake:16 (vcpkg_cmake_build)
+  ports/opencv4/portfile.cmake:508 (vcpkg_cmake_install)
+  scripts/ports.cmake:192 (include)
+error: building opencv4:x64-linux failed with: BUILD_FAILEDSee https://learn.microsoft.com/vcpkg/troubleshoot/build-failures?WT.mc_id=vcpkg_inproduct_cli for more information.
+Elapsed time to handle opencv4:x64-linux: 13 min
+Please ensure you're using the latest port files with `git pull` and `vcpkg update`.
+Then check for known issues at:
+  https://github.com/microsoft/vcpkg/issues?q=is%3Aissue+is%3Aopen+in%3Atitle+opencv4
+You can submit a new issue at:
+  https://github.com/microsoft/vcpkg/issues/new?title=[opencv4]+Build+error+on+x64-linux&body=Copy+issue+body+from+%2Fhome%2Frunner%2Fwork%2Fwpical%2Fwpical%2Fvcpkg_installed%2Fvcpkg%2Fissue_body.md
+You can also submit an issue by running (GitHub CLI must be installed):
+  gh issue create -R microsoft/vcpkg --title "[opencv4] Build failure on x64-linux" --body-file /home/runner/work/wpical/wpical/vcpkg_installed/vcpkg/issue_body.md
+-- Running vcpkg install - failed
+CMake Error at vcpkg/scripts/buildsystems/vcpkg.cmake:902 (message):
+  vcpkg install failed.  See logs for more information:
+  /home/runner/work/wpical/wpical/vcpkg-manifest-install.log
+Call Stack (most recent call first):
+  /usr/local/share/cmake-3.30/Modules/CMakeDetermineSystem.cmake:143 (include)
+  CMakeLists.txt:5 (project)
+CMake Error: CMake was unable to find a build program corresponding to "Unix Makefiles".  CMAKE_MAKE_PROGRAM is not set.  You probably need to select a different build tool.
+CMake Error: CMAKE_C_COMPILER not set, after EnableLanguage
+CMake Error: CMAKE_CXX_COMPILER not set, after EnableLanguage
+-- Configuring incomplete, errors occurred!

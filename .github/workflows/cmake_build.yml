@@ -2,41 +2,40 @@ name: Build
 on:
   push:
 jobs:
-  build-linux:
-    name: Build Project
-    runs-on: ubuntu-latest
-    env:
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-    steps:
-      - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v7
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+  # build-linux:
+  #   name: Build Project
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  #   steps:
+  #     - name: Export GitHub Actions cache environment variables
+  #       uses: actions/github-script@v7
+  #       with:
+  #         script: |
+  #           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+  #           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - name: Checkout
-        uses: actions/checkout@v4.1.7
+  #     - name: Checkout
+  #       uses: actions/checkout@v4.1.7
 
-      - name: Run setup.sh
-        run: |
-          chmod +x ./setup.sh
-          ./setup.sh
+  #     - name: Run setup.sh
+  #       run: |
+  #         chmod +x ./setup.sh
+  #         ./setup.sh
 
-      - name: Setup Ninja
-        uses: seanmiddleditch/gha-setup-ninja@v4
+  #     - name: Setup Ninja
+  #       uses: seanmiddleditch/gha-setup-ninja@v4
 
-      - name: Configure and Build Project
-        uses: threeal/cmake-action@main
-        with:
-          source-dir: .
-          build-dir: ./build
-          generator: Ninja
-          c-compiler: gcc
-          cxx-compiler: g++
-          build-args: |
-            '-DCMAKE_BUILD_TYPE=Release'
-
+  #     - name: Configure and Build Project
+  #       uses: threeal/cmake-action@main
+  #       with:
+  #         source-dir: .
+  #         build-dir: ./build
+  #         generator: Ninja
+  #         c-compiler: gcc
+  #         cxx-compiler: g++
+  #         build-args: |
+  #           '-DCMAKE_BUILD_TYPE=Release'
 
   build-windows:
     name: Build Project
@@ -70,10 +69,10 @@ jobs:
           generator: Visual Studio 17 2022
           c-compiler: MSVC
           cxx-compiler: MSVC
-          build-args: |
-            '-DCMAKE_BUILD_TYPE=Release'
+          # build-args: |
+          #   '-DCMAKE_BUILD_TYPE=Release'
 
-      - name: Install Inno Setup
+      - name: Generate Installer
         run: |
           choco install innosetup
           C:/"Program Files (x86)"/"Inno Setup 6"/ISCC.exe windowsiss.iss

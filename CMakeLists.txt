@@ -29,6 +29,7 @@ find_package(Ceres CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(glog REQUIRED)
+find_package(Python3 COMPONENTS Development REQUIRED)
 
 # Add the executable and specify the source files
 add_executable(${PROJECT_NAME} 
@@ -54,6 +55,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Ceres::ceres
     nlohmann_json::nlohmann_json
     glog::glog
+    Python3::Python
     ${OpenCV_LIBS}
 )
 
