@@ -14,26 +14,39 @@ jobs:
           chmod +x ./setup.sh
           ./setup.sh
 
-      - name: Configure and Build Project
-        uses: threeal/cmake-action@main
+      - name: Setup Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v4
 
-      - name: Configure Project
-        uses: threeal/cmake-action@main
-        with:
-          run-build: false
-      
       - name: Configure and Build Project
         uses: threeal/cmake-action@main
         with:
           source-dir: .
           build-dir: ./build
-
-      - name: Setup Ninja
-        uses: seanmiddleditch/gha-setup-ninja@v4
-        
-      - name: Configure and Build Project
-        uses: threeal/cmake-action@main
-        with:
           generator: Ninja
           c-compiler: gcc
           cxx-compiler: g++
+
+
+  build-windows:
+      name: Build Project
+      runs-on: windows-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4.1.7
+
+        - name: Install Packages
+          run: |
+            git clone https://github.com/microsoft/vcpkg.git
+            ./vcpkg/vcpkg bootstrap-vcpkg.sh
+            ./vcpkg/vcpkg integrate install
+            ./vcpkg/vcpkg install
+
+        - name: Configure and Build Project
+          uses: threeal/cmake-action@main
+          with:
+            source-dir: .
+            build-dir: ./build
+            generator: Visual Studio 17 2022
+            c-compiler: msvc
+            cxx-compiler: msvc
+    
