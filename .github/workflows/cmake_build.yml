@@ -68,8 +68,8 @@ jobs:
           source-dir: .
           build-dir: ./build
           generator: Visual Studio 17 2022
-          c-compiler: msvc
-          cxx-compiler: msvc
+          c-compiler: MSVC
+          cxx-compiler: MSVC
           build-args: |
             '-DCMAKE_BUILD_TYPE=Release'
 
