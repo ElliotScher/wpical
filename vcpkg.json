@@ -1,5 +1,18 @@
 {
   "dependencies": [
+    "glfw3",
+    "glad",
+    "stb",
+    "implot",
+    "apriltag",
+    "python3",
+    {
+      "name": "ceres",
+      "features": [
+        "eigensparse"
+      ]
+    },
+    "glog",
     {
       "name": "opencv4",
       "features": [
