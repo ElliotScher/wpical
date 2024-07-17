@@ -1,3 +1,4 @@
+-- Building x64-linux-rel
 CMake Error at scripts/cmake/vcpkg_execute_build_process.cmake:134 (message):
     Command failed: /usr/local/bin/cmake --build . --config Release --target install -- -v -j5
     Working Directory: /home/runner/work/wpical/wpical/vcpkg/buildtrees/opencv4/x64-linux-rel
@@ -9,7 +10,7 @@ Call Stack (most recent call first):
   ports/opencv4/portfile.cmake:508 (vcpkg_cmake_install)
   scripts/ports.cmake:192 (include)
 error: building opencv4:x64-linux failed with: BUILD_FAILEDSee https://learn.microsoft.com/vcpkg/troubleshoot/build-failures?WT.mc_id=vcpkg_inproduct_cli for more information.
-Elapsed time to handle opencv4:x64-linux: 13 min
+Elapsed time to handle opencv4:x64-linux: 15 min
 Please ensure you're using the latest port files with `git pull` and `vcpkg update`.
 Then check for known issues at:
   https://github.com/microsoft/vcpkg/issues?q=is%3Aissue+is%3Aopen+in%3Atitle+opencv4

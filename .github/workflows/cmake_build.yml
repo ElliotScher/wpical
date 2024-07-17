@@ -27,6 +27,12 @@ jobs:
         run: |
           cmake --build build --config Release
 
+      - name: Log OpenCV Manifest
+        uses: actions/upload-artifact@v4
+        with:
+          path: /home/runner/work/wpical/wpical/vcpkg/buildtrees/opencv4/install-x64-linux-rel-out.log
+          name: OpenCV Log
+
   build-windows:
     name: Build Project
     runs-on: windows-latest
