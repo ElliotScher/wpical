@@ -8,4 +8,4 @@ cd vcpkg
 ./vcpkg integrate install
 cd ..
 sudo cmake -DCMAKE_BUILD_TYPE=Release
-sudo cmake -S . -B ./build -G "Ninja"
+sudo cmake -S . -B ./build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -Wno-dev

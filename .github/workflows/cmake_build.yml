@@ -18,15 +18,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4.1.7
 
-      - name: Setup Ninja
-        uses: seanmiddleditch/gha-setup-ninja@v4
-
-      - name: Configure Project
+      - name: Run Setup
         run: |
           chmod +x ./setup.sh
           ./setup.sh
 
-      - name: Build Project
+      - name: Configure and Build Project
         run: |
           cmake --build build --config Release
 
