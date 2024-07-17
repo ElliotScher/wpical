@@ -18,20 +18,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4.1.7
 
-      - name: Install Packages
-        run: |
-          git clone https://github.com/microsoft/vcpkg.git
-          cd vcpkg
-          ./bootstrap-vcpkg.sh
-          ./vcpkg integrate install
-          cd ..
-
       - name: Setup Ninja
         uses: seanmiddleditch/gha-setup-ninja@v4
 
-      - name: Configure and Build Project
+      - name: Configure Project
         run: |
-          cmake -S . -B ./build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+          chmod +x ./setup.sh
+          ./setup.sh
+
+      - name: Build Project
+        run: |
           cmake --build build --config Release
 
   build-windows:
