@@ -18,12 +18,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4.1.7
 
-      - name: Run Setup
+      - name: Configure Project
         run: |
           chmod +x ./setup.sh
           ./setup.sh
 
-      - name: Configure and Build Project
+      - name: Build Project
         run: |
           cmake --build build --config Release
 
