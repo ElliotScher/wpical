@@ -1,6 +1,7 @@
 #include <cameracalibration.h>
 
-nlohmann::json cameracalibration::calibrate(const std::string& input_video, float square_width, float marker_width, int board_width, int board_height) {
+nlohmann::json cameracalibration::calibrate(const std::string &input_video, float square_width, float marker_width, int board_width, int board_height)
+{
     // Aruco Board
     cv::aruco::Dictionary aruco_dict = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_5X5_1000);
     cv::Ptr<cv::aruco::CharucoBoard> charuco_board = new cv::aruco::CharucoBoard(cv::Size(board_width, board_height), square_width / 0.0254, marker_width / 0.0254, aruco_dict);
@@ -16,18 +17,21 @@ nlohmann::json cameracalibration::calibrate(const std::string& input_video, floa
     std::vector<int> all_ids;
     std::vector<int> all_counter;
 
-    while (video_capture.isOpened()) {
+    while (video_capture.isOpened())
+    {
         cv::Mat frame;
         video_capture >> frame;
 
-        if (frame.empty()) {
+        if (frame.empty())
+        {
             break;
         }
 
         // Limit FPS
         frame_count++;
 
-        if (frame_count % 10 != 0) {
+        if (frame_count % 10 != 0)
+        {
             continue;
         }
 
@@ -46,7 +50,8 @@ nlohmann::json cameracalibration::calibrate(const std::string& input_video, floa
 
         cv::Mat debug_image = frame;
 
-        if (!charuco_ids.empty() && charuco_ids.size() >= 4) {
+        if (!charuco_ids.empty() && charuco_ids.size() >= 4)
+        {
             all_corners.insert(all_corners.end(), charuco_corners.begin(), charuco_corners.end());
             all_ids.insert(all_ids.end(), charuco_ids.begin(), charuco_ids.end());
             all_counter.push_back(charuco_ids.size());
@@ -56,7 +61,8 @@ nlohmann::json cameracalibration::calibrate(const std::string& input_video, floa
         }
 
         cv::imshow("Frame", debug_image);
-        if (cv::waitKey(1) == 'q') {
+        if (cv::waitKey(1) == 'q')
+        {
             break;
         }
     }
@@ -83,14 +89,7 @@ nlohmann::json cameracalibration::calibrate(const std::string& input_video, floa
         {"camera_matrix", std::vector<double>(camera_matrix.begin<double>(), camera_matrix.end<double>())},
         {"distortion_coefficients", std::vector<double>(dist_coeffs.begin<double>(), dist_coeffs.end<double>())},
         {"avg_reprojection_error", cv::mean(per_view_errors)[0]},
-        {"num_images", static_cast<int>(all_counter.size())}
-    };
-
-    // Write JSON to file
-    std::string output_filename = "c:\\Users\\Elliot Scher\\Downloads\\calibration_result.json";
-    std::ofstream ofs(output_filename);
-    ofs << std::setw(4) << camera_model << std::endl;
-    ofs.close();
+        {"num_images", static_cast<int>(all_counter.size())}};
 
     return camera_model;
 }

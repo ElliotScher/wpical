@@ -65,13 +65,23 @@ static void DisplayGui()
   static int boardHeight = 8;
 
   static int pinnedTag = 1;
-  static int fps = 4;
+  static int fps = 15;
 
-  if (ImGui::Button("Select Camera Calibration Video"))
+  if (ImGui::Button("Upload Camera Matrix"))
   {
     configFileSelector = std::make_unique<pfd::open_file>(
-        "Select Camera Calibration Video", "",
-        std::vector<std::string>{"Video Files", "*.mp4 *.mov *.m4v *.mkv"}, pfd::opt::none);
+        "Select Camera Matrix JSON", "",
+        std::vector<std::string>{"JSON", "*.json"}, pfd::opt::none);
+  }
+
+  ImGui::SameLine();
+  ImGui::Text("Or");
+  ImGui::SameLine();
+
+  if (ImGui::Button("Calibrate Camera"))
+  {
+    selectedConfigFile.clear();
+    ImGui::OpenPopup("Camera Calibration");
   }
 
   if (configFileSelector)
@@ -86,17 +96,8 @@ static void DisplayGui()
 
   if (!selectedConfigFile.empty())
   {
-    ImGui::TextWrapped("Selected File: %s", selectedConfigFile.c_str());
+    ImGui::TextWrapped("Selected Camera Matrix: %s", selectedConfigFile.c_str());
   }
-
-  ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
-  ImGui::InputDouble("Square Width (in)", &squareWidth);
-  ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
-  ImGui::InputDouble("Marker Width (in)", &markerWidth);
-  ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
-  ImGui::InputInt("Board Width (squares)", &boardWidth);
-  ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
-  ImGui::InputInt("Board Height (squares)", &boardHeight);
 
   if (ImGui::Button("Select Field Map JSON"))
   {
@@ -150,17 +151,10 @@ static void DisplayGui()
   {
     if (!selectedCalibrationDirectory.empty() && !selectedConfigFile.empty() && !selectedFieldMap.empty() && pinnedTag > 0 && pinnedTag <= 16)
     {
-      nlohmann::json cameraJson = cameracalibration::calibrate(
-          selectedConfigFile.c_str(),
-          squareWidth,
-          markerWidth,
-          boardWidth,
-          boardHeight);
-
       int calibrationOutput = fieldcalibration::calibrate(
           selectedCalibrationDirectory.c_str(),
-          selectedCalibrationDirectory + "/output.json",
-          cameraJson,
+          selectedCalibrationDirectory + "output/output.json",
+          selectedConfigFile,
           selectedFieldMap.c_str(),
           pinnedTag,
           fps);
@@ -214,7 +208,74 @@ static void DisplayGui()
     ImGui::EndPopup();
   }
 
-  ImGui::End();
+  if (ImGui::BeginPopupModal("Camera Calibration", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+  {
+
+    if (ImGui::Button("Select Camera Calibration Video"))
+    {
+      configFileSelector = std::make_unique<pfd::open_file>(
+          "Select Camera Calibration Video", "",
+          std::vector<std::string>{"Video Files", "*.mp4 *.mov *.m4v *.mkv"}, pfd::opt::none);
+    }
+
+    if (configFileSelector)
+    {
+      auto selectedFiles = configFileSelector->result();
+      if (!selectedFiles.empty())
+      {
+        selectedConfigFile = selectedFiles[0];
+      }
+      configFileSelector.reset();
+    }
+
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+    ImGui::InputDouble("Square Width (in)", &squareWidth);
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+    ImGui::InputDouble("Marker Width (in)", &markerWidth);
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+    ImGui::InputInt("Board Width (squares)", &boardWidth);
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+    ImGui::InputInt("Board Height (squares)", &boardHeight);
+
+    ImGui::Separator();
+    if (ImGui::Button("Calibrate") && !selectedConfigFile.empty())
+    {
+      nlohmann::json cameraJson = cameracalibration::calibrate(
+          selectedConfigFile.c_str(),
+          squareWidth,
+          markerWidth,
+          boardWidth,
+          boardHeight);
+
+      // Write JSON to file
+      std::string output_filename = selectedConfigFile;
+
+      size_t pos = output_filename.rfind('/');
+
+      if (pos != std::string::npos)
+      {
+        output_filename = output_filename.erase(pos);
+      }
+      else
+      {
+        pos = output_filename.rfind('\\');
+        output_filename = output_filename.erase(pos);
+      }
+      std::ofstream ofs(output_filename.append("/camera calibration.json"));
+      ofs << std::setw(4) << cameraJson << std::endl;
+      ofs.close();
+
+      selectedConfigFile = output_filename;
+      ImGui::CloseCurrentPopup();
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Close"))
+    {
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
+  }
 }
 
 #ifdef _WIN32
