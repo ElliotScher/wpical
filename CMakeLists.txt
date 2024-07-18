@@ -21,6 +21,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/include)
 # Add subdirectories for external libraries
 add_subdirectory(wpigui)
 add_subdirectory(imgui)
+add_subdirectory(mrcal-java)
 
 # Find required packages
 find_package(apriltag REQUIRED)
@@ -30,6 +31,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(glog REQUIRED)
 find_package(Python3 COMPONENTS Development REQUIRED)
+find_package(suitesparse REQUIRED)
 
 # Add the executable and specify the source files
 add_executable(${PROJECT_NAME} 
@@ -50,12 +52,17 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 target_link_libraries(${PROJECT_NAME} PRIVATE
     wpigui
     imgui
+    mrcal-java
     apriltag::apriltag
     Eigen3::Eigen
     Ceres::ceres
     nlohmann_json::nlohmann_json
     glog::glog
     Python3::Python
+    SuiteSparse::amd
+    SuiteSparse::btf
+    SuiteSparse::klu
+    SuiteSparse::ldl
     ${OpenCV_LIBS}
 )
 

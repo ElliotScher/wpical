@@ -1,0 +1,6 @@
+[submodule "mrcal-java"]
+	path = mrcal-java
+	url = https://github.com/PhotonVision/mrcal-java
+[submodule "vcpkg"]
+	path = vcpkg
+	url = https://github.com/microsoft/vcpkg
