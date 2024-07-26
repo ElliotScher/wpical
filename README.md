@@ -7,15 +7,15 @@ WPIcal is a tool used to “calibrate” or empirically measure the position and
 WPIcal measures the positions of the Apriltags on the field relative to each other. By selecting a tag to “pin” or use the default position for, WPIcal will create a field map, in which the other tags on the field will be moved to their measured positions relative to the pinned tag.
 
 ### Calibration Process
-* Print out a copy of the ChAruCo board used to calibrate your camera.
+* Print out a copy of the ChArUco board used to calibrate your camera.
 
-    ![ChAruCo](ChAruCo.png)
+    ![ChArUco](ChArUco.png)
 * Take a short video of the calibration board with your camera, make sure the board is on a flat, non-reflective surface.
 * Take videos of the Apriltags you would like to calibrate.
 * Ensure field calibration videos are in a separate directory on your machiine
 * Run WPIcal application:
     * Select your camera calibration video.
-    * Fill in the ChAruCo board properties
+    * Fill in the ChArUco board properties
     * Select the ideal Apriltag field map .json file provided by WPIlib.
     * Select the field video directory.
     * Select the pinned tag. It must be a tag that is in the calibration video
