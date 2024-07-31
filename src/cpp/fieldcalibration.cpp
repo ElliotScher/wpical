@@ -511,6 +511,11 @@ int fieldcalibration::calibrate(std::string input_dir_path, std::string output_f
     observed_map_json["tags"].push_back(tag_json);
   }
 
+  observed_map_json["field"] = {
+    {"length", 16.541},
+    {"width", 8.211}
+  };
+
   // for (const auto& constraint : constraints)
   // {
   // nlohmann::json output_constraint;
