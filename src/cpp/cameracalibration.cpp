@@ -95,25 +95,24 @@ nlohmann::json cameracalibration::calibrate(const std::string &input_video, floa
     return camera_model;
 }
 
-nlohmann::json cameracalibration::calibrate(const std::string &input_video, float square_width, float marker_width, int board_width, int board_height, double imagerWidthPixels, double imagerHeightPixels, double focal_length_guess)
+nlohmann::json cameracalibration::calibrate(const std::string &input_video, float square_width, int board_width, int board_height, double imagerWidthPixels, double imagerHeightPixels, double focal_length_guess)
 {
-    cv::aruco::Dictionary aruco_dict = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_5X5_1000);
-    cv::Ptr<cv::aruco::CharucoBoard> charuco_board = new cv::aruco::CharucoBoard(cv::Size(board_width, board_height), square_width / 0.0254, marker_width / 0.0254, aruco_dict);
-    cv::aruco::CharucoDetector charuco_detector(*charuco_board);
-
+    // Video capture
     cv::VideoCapture video_capture(input_video);
-    cv::Size frame_shape;
+    int frame_count = 0;
 
-    cv::Mat objPts;
-    cv::Mat outBoardCorners;
-    cv::Mat outLevels;
-    std::vector<mrcal_point3_t> outPts;
+    // Detection output
+    std::vector<std::vector<cv::Point2f>> all_corners;
+    std::vector<std::vector<mrcal_point3_t>> all_points;
+
+    // Dimensions
+    cv::Size boardSize(board_width - 1, board_height - 1);
+    cv::Size imagerSize(imagerWidthPixels, imagerHeightPixels);
 
     while (video_capture.isOpened())
     {
         cv::Mat frame;
         video_capture >> frame;
-        cv::Mat debug_image = frame;
 
         if (frame.empty())
         {
@@ -124,68 +123,24 @@ nlohmann::json cameracalibration::calibrate(const std::string &input_video, floa
         cv::Mat frame_gray;
         cv::cvtColor(frame, frame_gray, cv::COLOR_BGR2GRAY);
 
-        frame_shape = frame_gray.size();
+        cv::Mat debug_image = frame;
 
-        cv::Mat objPoints;
-        cv::Mat imgPoints;
-        cv::Mat detectedCorners;
-        cv::Mat detectedIds;
+        std::vector<cv::Point2f> corners;
 
-        charuco_detector.detectBoard(frame_gray, detectedCorners, detectedIds);
+        bool found = cv::findChessboardCorners(frame_gray, boardSize, corners, cv::CALIB_CB_ADAPTIVE_THRESH + cv::CALIB_CB_NORMALIZE_IMAGE);
 
-        std::vector<cv::Mat> detectedCornersList;
+        cv::drawChessboardCorners(frame, boardSize, corners, found);
 
-        for (int i = 0; i < detectedCorners.total(); i++)
+        if (found)
         {
-            detectedCornersList.push_back(detectedCorners.row(i));
+            all_corners.push_back(corners);
         }
 
-        auto charucoboard = *charuco_board;
-        charucoboard.matchImagePoints(detectedCornersList, detectedIds, objPoints, imgPoints);
+        // Display the frame with detected corners
+        cv::imshow("Checkerboard Detection", frame);
 
-        cv::aruco::drawDetectedCornersCharuco(debug_image, detectedCorners, detectedIds);
-
-        imgPoints.copyTo(outBoardCorners);
-        objPoints.copyTo(objPts);
-
-        int size = (board_height - 1) * (board_width - 1);
-
-        std::vector<mrcal_point2_t> boardCorners(size);
-        std::vector<mrcal_point3_t> objectPoints(size);
-        std::vector<float> levels(size);
-
-        for (int i = 0; i < detectedIds.rows; i++)
-        {
-            for (int j = 0; j < detectedIds.cols; j++)
-            {
-                int id = detectedIds.at<int>(i, j);
-                auto corner = outBoardCorners.at<cv::Point2f>(i, j);
-                auto point = objPts.at<cv::Point3f>(i, j);
-                boardCorners[id] = mrcal_point2_t{corner.x, corner.y};
-                objectPoints[id] = mrcal_point3_t{point.x, point.y, point.z}; // this part is weird. in the photonvision repo it uses the z coordinate but in the mrcal_test it uses the level
-                levels[id] = 1.0f;
-                std::cout << std::to_string(objectPoints[id].z) << std::endl;
-            }
-        }
-
-        std::cout << "added detected ids" << std::endl;
-
-        for (int i = 0; i < boardCorners.size(); i++)
-        {
-            std::cout << "adding board corners" << std::endl;
-            if (boardCorners.at(i).x == NULL || boardCorners.at(i).y == NULL)
-            {
-                objectPoints[i] = mrcal_point3_t{-1.0f, -1.0f, -1.0f};
-                levels[i] = -1.0f;
-            }
-        }
-
-        std::cout << "added board corners" << std::endl;
-
-        outPts = objectPoints;
-
-        cv::imshow("Frame", debug_image);
-        if (cv::waitKey(1) == 'q')
+        // Exit loop if 'q' is pressed
+        if (cv::waitKey(30) == 'q')
         {
             break;
         }
@@ -194,35 +149,34 @@ nlohmann::json cameracalibration::calibrate(const std::string &input_video, floa
     video_capture.release();
     cv::destroyAllWindows();
 
-    std::cout << "completed image processing" << std::endl;
-
-    cv::Size boardSize = cv::Size(board_width - 1, board_height - 1); // corners not squares?
-    cv::Size imagerSize = cv::Size(imagerWidthPixels, imagerHeightPixels);
+    for (int i = 0; i < all_corners.size(); i++)
+    {
+        std::vector<mrcal_point3_t> points;
+        for (int j = 0; j < all_corners.at(i).size(); j++)
+        {
+            points.push_back(mrcal_point3_t{all_corners.at(i).at(j).x, all_corners.at(i).at(j).y, 1.0f});
+        }
+        all_points.push_back(points);
+    }
 
     std::vector<mrcal_point3_t> observations_board;
     std::vector<mrcal_pose_t> frames_rt_toref;
 
-    size_t total_points = boardSize.width * boardSize.height * observations_board.size();
-    observations_board.reserve(total_points);
-    frames_rt_toref.reserve(observations_board.size());
-
-    std::cout << "created calibration objects" << std::endl;
-
-    for (const auto value : outPts)
+    for (int i = 0; i < all_points.size(); i++)
     {
-        std::cout << "getting seed poses" << std::endl;
-        mrcal_pose_t ret = getSeedPose(&value, boardSize, imagerSize, square_width / 0.0254, focal_length_guess);
-        observations_board.insert(observations_board.end(), value);
+        size_t total_points = board_width * boardSize.height * all_points.at(i).size();
+        observations_board.reserve(total_points);
+        frames_rt_toref.reserve(all_points.at(i).size());
+
+        auto ret = getSeedPose(all_points.at(i).data(), boardSize, imagerSize, square_width / 0.0254, focal_length_guess);
+
+        observations_board.insert(observations_board.end(), all_points.at(i).begin(), all_points.at(i).end());
         frames_rt_toref.push_back(ret);
     }
 
-    std::cout << "got seed poses. Calibrating" << std::endl;
+    auto cal_result = mrcal_main(observations_board, frames_rt_toref, boardSize, square_width / 0.0254, imagerSize, focal_length_guess);
 
-    auto calResult = mrcal_main(observations_board, frames_rt_toref, boardSize, square_width / 0.0254, imagerSize, focal_length_guess);
-
-    auto &stats = *calResult;
-
-    std::cout << "calibrated" << std::endl;
+    auto &stats = *cal_result;
 
     std::vector<double> cameraMatrix = {
         // fx 0 cx
@@ -265,10 +219,10 @@ nlohmann::json cameracalibration::calibrate(const std::string &input_video, floa
 
     auto avg = total / count;
 
-    nlohmann::json result = {// TODO: FIGURE OUT WHICH INTRINSICS CORRESPOND TO CAMERA MATRIX AND DISTORTION COEFFICIENTS
-                             {"camera_matrix", cameraMatrix},
-                             {"distortion_coefficients", distortionCoefficients},
-                             {"avg_reprojection_error", avg}};
+    nlohmann::json result = {
+        {"camera_matrix", cameraMatrix},
+        {"distortion_coefficients", distortionCoefficients},
+        {"avg_reprojection_error", avg}};
 
     return result;
 }

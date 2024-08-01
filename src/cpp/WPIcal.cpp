@@ -89,10 +89,15 @@ static void DisplayGui()
 
   static std::string calibrationJsonPath;
 
+  static bool mrcal = true;
+
   static double squareWidth = 0.709;
   static double markerWidth = 0.551;
   static int boardWidth = 12;
   static int boardHeight = 8;
+  static double imagerWidth = 0;
+  static double imagerHeight = 0;
+  static double focalLengthGuess = 0;
 
   static int pinnedTag = 1;
   static int fps = 15;
@@ -298,60 +303,139 @@ static void DisplayGui()
   if (ImGui::BeginPopupModal("Camera Calibration", NULL,
                              ImGuiWindowFlags_AlwaysAutoResize))
   {
-    if (ImGui::Button("Select Camera Calibration Video"))
+    if (ImGui::Button("MRcal"))
     {
-      configFileSelector = std::make_unique<pfd::open_file>(
-          "Select Camera Calibration Video", "",
-          std::vector<std::string>{"Video Files", "*.mp4 *.mov *.m4v *.mkv"},
-          pfd::opt::none);
+      mrcal = true;
     }
 
-    if (configFileSelector)
+    ImGui::SameLine();
+    ImGui::Text("or");
+    ImGui::SameLine();
+
+    if (ImGui::Button("OpenCV"))
     {
-      auto selectedFiles = configFileSelector->result();
-      if (!selectedFiles.empty())
-      {
-        selectedConfigFile = selectedFiles[0];
-      }
-      configFileSelector.reset();
+      mrcal = false;
     }
 
-    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
-    ImGui::InputDouble("Square Width (in)", &squareWidth);
-    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
-    ImGui::InputDouble("Marker Width (in)", &markerWidth);
-    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
-    ImGui::InputInt("Board Width (squares)", &boardWidth);
-    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
-    ImGui::InputInt("Board Height (squares)", &boardHeight);
-
-    ImGui::Separator();
-    if (ImGui::Button("Calibrate") && !selectedConfigFile.empty())
+    if (mrcal)
     {
-      std::cout << "calibration button pressed" << std::endl;
-      nlohmann::json cameraJson =
-          cameracalibration::calibrate(selectedConfigFile.c_str(), squareWidth,
-                                       markerWidth, boardWidth, boardHeight, 1920, 1080, 3683);
-
-      std::string output_filename = selectedConfigFile;
-
-      size_t pos = output_filename.rfind('/');
-
-      if (pos != std::string::npos)
+      if (ImGui::Button("Select Camera Calibration Video"))
       {
-        output_filename = output_filename.erase(pos);
+        configFileSelector = std::make_unique<pfd::open_file>(
+            "Select Camera Calibration Video", "",
+            std::vector<std::string>{"Video Files", "*.mp4 *.mov *.m4v *.mkv"},
+            pfd::opt::none);
       }
-      else
-      {
-        pos = output_filename.rfind('\\');
-        output_filename = output_filename.erase(pos);
-      }
-      std::ofstream ofs(output_filename.append("/camera calibration.json"));
-      ofs << std::setw(4) << cameraJson << std::endl;
-      ofs.close();
 
-      selectedConfigFile = output_filename;
-      ImGui::CloseCurrentPopup();
+      if (configFileSelector)
+      {
+        auto selectedFiles = configFileSelector->result();
+        if (!selectedFiles.empty())
+        {
+          selectedConfigFile = selectedFiles[0];
+        }
+        configFileSelector.reset();
+      }
+
+      ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+      ImGui::InputDouble("Square Width (in)", &squareWidth);
+      ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+      ImGui::InputInt("Board Width (squares)", &boardWidth);
+      ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+      ImGui::InputInt("Board Height (squares)", &boardHeight);
+      ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+      ImGui::InputDouble("Image Width (pixels)", &imagerWidth);
+      ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+      ImGui::InputDouble("Image Height (pixels)", &imagerHeight);
+      ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+      ImGui::InputDouble("Focal Length Estimate (pixels)", &focalLengthGuess);
+
+      ImGui::Separator();
+      if (ImGui::Button("Calibrate") && !selectedConfigFile.empty())
+      {
+        std::cout << "calibration button pressed" << std::endl;
+        nlohmann::json cameraJson =
+            cameracalibration::calibrate(selectedConfigFile.c_str(), squareWidth,
+                                         boardWidth, boardHeight, imagerWidth, imagerHeight, focalLengthGuess);
+
+        std::string output_filename = selectedConfigFile;
+
+        size_t pos = output_filename.rfind('/');
+
+        if (pos != std::string::npos)
+        {
+          output_filename = output_filename.erase(pos);
+        }
+        else
+        {
+          pos = output_filename.rfind('\\');
+          output_filename = output_filename.erase(pos);
+        }
+        std::ofstream ofs(output_filename.append("/camera calibration.json"));
+        ofs << std::setw(4) << cameraJson << std::endl;
+        ofs.close();
+
+        selectedConfigFile = output_filename;
+        ImGui::CloseCurrentPopup();
+      }
+    }
+    else
+    {
+      if (ImGui::Button("Select Camera Calibration Video"))
+      {
+        configFileSelector = std::make_unique<pfd::open_file>(
+            "Select Camera Calibration Video", "",
+            std::vector<std::string>{"Video Files", "*.mp4 *.mov *.m4v *.mkv"},
+            pfd::opt::none);
+      }
+
+      if (configFileSelector)
+      {
+        auto selectedFiles = configFileSelector->result();
+        if (!selectedFiles.empty())
+        {
+          selectedConfigFile = selectedFiles[0];
+        }
+        configFileSelector.reset();
+      }
+
+      ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+      ImGui::InputDouble("Square Width (in)", &squareWidth);
+      ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+      ImGui::InputDouble("Marker Width (in)", &markerWidth);
+      ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+      ImGui::InputInt("Board Width (squares)", &boardWidth);
+      ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+      ImGui::InputInt("Board Height (squares)", &boardHeight);
+
+      ImGui::Separator();
+      if (ImGui::Button("Calibrate") && !selectedConfigFile.empty())
+      {
+        std::cout << "calibration button pressed" << std::endl;
+        nlohmann::json cameraJson =
+            cameracalibration::calibrate(selectedConfigFile.c_str(), squareWidth, markerWidth,
+                                         boardWidth, boardHeight);
+
+        std::string output_filename = selectedConfigFile;
+
+        size_t pos = output_filename.rfind('/');
+
+        if (pos != std::string::npos)
+        {
+          output_filename = output_filename.erase(pos);
+        }
+        else
+        {
+          pos = output_filename.rfind('\\');
+          output_filename = output_filename.erase(pos);
+        }
+        std::ofstream ofs(output_filename.append("/camera calibration.json"));
+        ofs << std::setw(4) << cameraJson << std::endl;
+        ofs.close();
+
+        selectedConfigFile = output_filename;
+        ImGui::CloseCurrentPopup();
+      }
     }
 
     ImGui::SameLine();
@@ -471,11 +555,11 @@ static void DisplayGui()
 int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
                       LPSTR pCmdLine, int nCmdShow)
 {
-  AllocConsole();
-  FILE *f;
-  freopen_s(&f, "CONOUT$", "w", stdout);
-  freopen_s(&f, "CONOUT$", "w", stderr);
-  freopen_s(&f, "CONIN$", "r", stdin);
+  // AllocConsole();
+  // FILE *f;
+  // freopen_s(&f, "CONOUT$", "w", stdout);
+  // freopen_s(&f, "CONOUT$", "w", stderr);
+  // freopen_s(&f, "CONIN$", "r", stdin);
   int argc = __argc;
   char **argv = __argv;
 #else

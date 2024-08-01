@@ -15,7 +15,7 @@
 namespace cameracalibration
 {
     nlohmann::json calibrate(const std::string &input_video, float square_width, float marker_width, int board_width, int board_height);
-    nlohmann::json calibrate(const std::string &input_video, float square_width, float marker_width, int board_width, int board_height, double imagerWidthPixels, double imagerHeightPixels, double focal_length_guess);
+    nlohmann::json calibrate(const std::string &input_video, float square_width, int board_width, int board_height, double imagerWidthPixels, double imagerHeightPixels, double focal_length_guess);
 }
 
 #endif
