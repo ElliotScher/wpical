@@ -1,26 +1,28 @@
 {
-  "dependencies": [
-    "glfw3",
-    "glad",
-    "stb",
-    "implot",
-    "apriltag",
-    "python3",
-    {
-      "name": "ceres",
-      "features": [
-        "eigensparse"
-      ]
-    },
-    "glog",
-    {
-      "name": "opencv4",
-      "features": [
-        "ffmpeg",
-        "contrib"
-      ]
-    },
-    "eigen3",
-    "nlohmann-json"
-  ]
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+    "dependencies": [
+      "glfw3",
+      "glad",
+      "stb",
+      "implot",
+      "apriltag",
+      "python3",
+      "suitesparse",
+      {
+        "name": "ceres",
+        "features": [
+          "eigensparse"
+        ]
+      },
+      "glog",
+      {
+        "name": "opencv4",
+        "features": [
+          "ffmpeg",
+          "contrib"
+        ]
+      },
+      "eigen3",
+      "nlohmann-json"
+    ]
 }

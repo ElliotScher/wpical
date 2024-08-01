@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-set(CMAKE_TOOLCHAIN_FILE "vcpkg/scripts/buildsystems/vcpkg.cmake")
+set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake")
 
 project(WPIcal)
 
@@ -21,6 +21,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/include)
 # Add subdirectories for external libraries
 add_subdirectory(wpigui)
 add_subdirectory(imgui)
+add_subdirectory(mrcal-java)
 
 # Find required packages
 find_package(apriltag REQUIRED)
@@ -30,12 +31,16 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(glog REQUIRED)
 find_package(Python3 COMPONENTS Development REQUIRED)
+find_package(suitesparse REQUIRED)
 
 # Add the executable and specify the source files
 add_executable(${PROJECT_NAME} 
     src/cpp/WPIcal.cpp 
     src/cpp/fieldcalibration.cpp 
     src/cpp/cameracalibration.cpp
+    src/cpp/fieldmap.cpp
+    src/cpp/fmap.cpp
+    src/cpp/tagpose.cpp
     ${outlineviewer_resources_src}
     ${outlineviewer_rc}
 )
@@ -44,18 +49,24 @@ add_executable(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME} PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/include
     ${CMAKE_CURRENT_SOURCE_DIR}/build/vcpkg_installed/x64-windows/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/mrcal-java/src
 )
 
 # Link the libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE
     wpigui
     imgui
+    mrcal_jni
     apriltag::apriltag
     Eigen3::Eigen
     Ceres::ceres
     nlohmann_json::nlohmann_json
     glog::glog
     Python3::Python
+    SuiteSparse::amd
+    SuiteSparse::btf
+    SuiteSparse::klu
+    SuiteSparse::ldl
     ${OpenCV_LIBS}
 )
 
