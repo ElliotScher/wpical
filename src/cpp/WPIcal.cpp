@@ -331,7 +331,7 @@ static void DisplayGui()
       std::cout << "calibration button pressed" << std::endl;
       nlohmann::json cameraJson =
           cameracalibration::calibrate(selectedConfigFile.c_str(), squareWidth,
-                                       markerWidth, boardWidth, boardHeight, 1920, 1080, 26.078740157);
+                                       markerWidth, boardWidth, boardHeight, 1920, 1080, 3683);
 
       std::string output_filename = selectedConfigFile;
 
