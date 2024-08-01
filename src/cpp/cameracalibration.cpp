@@ -6,7 +6,7 @@ nlohmann::json cameracalibration::calibrate(const std::string &input_video, floa
     std::cout << "test print" << std::endl;
     // Aruco Board
     cv::aruco::Dictionary aruco_dict = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_5X5_1000);
-    cv::Ptr<cv::aruco::CharucoBoard> charuco_board = new cv::aruco::CharucoBoard(cv::Size(board_width, board_height), square_width / 0.0254, marker_width / 0.0254, aruco_dict);
+    cv::Ptr<cv::aruco::CharucoBoard> charuco_board = new cv::aruco::CharucoBoard(cv::Size(board_width, board_height), square_width * 0.0254, marker_width * 0.0254, aruco_dict);
     cv::aruco::CharucoDetector charuco_detector(*charuco_board);
 
     // Video capture
@@ -168,13 +168,13 @@ nlohmann::json cameracalibration::calibrate(const std::string &input_video, floa
         observations_board.reserve(total_points);
         frames_rt_toref.reserve(all_points.at(i).size());
 
-        auto ret = getSeedPose(all_points.at(i).data(), boardSize, imagerSize, square_width / 0.0254, focal_length_guess);
+        auto ret = getSeedPose(all_points.at(i).data(), boardSize, imagerSize, square_width * 0.0254, focal_length_guess);
 
         observations_board.insert(observations_board.end(), all_points.at(i).begin(), all_points.at(i).end());
         frames_rt_toref.push_back(ret);
     }
 
-    auto cal_result = mrcal_main(observations_board, frames_rt_toref, boardSize, square_width / 0.0254, imagerSize, focal_length_guess);
+    auto cal_result = mrcal_main(observations_board, frames_rt_toref, boardSize, square_width * 0.0254, imagerSize, focal_length_guess);
 
     auto &stats = *cal_result;
 
@@ -208,21 +208,10 @@ nlohmann::json cameracalibration::calibrate(const std::string &input_video, floa
         0.0,
         0.0};
 
-    double total = 0;
-    int count = 0;
-
-    for (int i = 0; i < stats.residuals.size(); i++)
-    {
-        total += stats.residuals[i];
-        count = count + 1;
-    }
-
-    auto avg = total / count;
-
     nlohmann::json result = {
         {"camera_matrix", cameraMatrix},
         {"distortion_coefficients", distortionCoefficients},
-        {"avg_reprojection_error", avg}};
+        {"avg_reprojection_error", stats.rms_error}};
 
     return result;
 }
