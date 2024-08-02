@@ -58,6 +58,7 @@ install_package nasm
 install_package linux-libc-dev
 install_package libxml2
 install_package libxml2-dev
+install_package gfortran
 git clone https://github.com/microsoft/vcpkg.git
 cd vcpkg
 ./bootstrap-vcpkg.sh
