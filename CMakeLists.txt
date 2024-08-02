@@ -29,8 +29,6 @@ find_package(Eigen3 CONFIG REQUIRED)
 find_package(Ceres CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(glog REQUIRED)
-find_package(Python3 COMPONENTS Development REQUIRED)
 find_package(suitesparse REQUIRED)
 
 # Add the executable and specify the source files
@@ -61,12 +59,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Eigen3::Eigen
     Ceres::ceres
     nlohmann_json::nlohmann_json
-    glog::glog
-    Python3::Python
     SuiteSparse::amd
-    SuiteSparse::btf
-    SuiteSparse::klu
-    SuiteSparse::ldl
+    SuiteSparse::cholmod
     ${OpenCV_LIBS}
 )
 

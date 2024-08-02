@@ -7,7 +7,6 @@
 #ifndef FIELDCALIBRATION_H
 #define FIELDCALIBRATION_H
 
-#include <glog/export.h>
 #include <ceres/ceres.h>
 
 #include <filesystem>
