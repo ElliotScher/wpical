@@ -9,6 +9,18 @@
 
 #include <ceres/ceres.h>
 
+#include <gtsam/linear/NoiseModel.h>
+#include <gtsam/geometry/Cal3_S2.h>
+#include <gtsam/nonlinear/ExpressionFactorGraph.h>
+#include <gtsam/slam/expressions.h>
+#include <gtsam/geometry/Point2.h>
+#include <gtsam/geometry/Pose3.h>
+#include <gtsam/inference/Symbol.h>
+#include <gtsam/nonlinear/DoglegOptimizer.h>
+#include <gtsam/nonlinear/Values.h>
+#include <tagmodel.h>
+#include <gtsam_utils.h>
+
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -47,6 +59,12 @@ struct Constraint
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
+struct TagDetection
+{
+  int id;
+  std::vector<std::pair<double, double>> corners;
+};
+
 namespace fieldcalibration
 {
   std::tuple<Eigen::Matrix<double, 3, 3>, Eigen::Matrix<double, 8, 1>> load_camera_model(std::string path);
@@ -72,9 +90,12 @@ namespace fieldcalibration
   int calibrate(std::string input_dir_path, std::string output_file_path,
                 std::string camera_model_path, std::string ideal_map_path,
                 int pinned_tag_id, int detection_fps);
-
   int calibrate(std::string input_dir_path, std::string output_file_path,
                 nlohmann::json camera_model, std::string ideal_map_path,
                 int pinned_tag_id, int detection_fps);
+  int gtsam_calibrate(std::string input_dir_path, std::string output_file_path,
+                      nlohmann::json camera_model, std::string ideal_map_path,
+                      int pinned_tag_id, int detection_fps);
+  gtsam::Pose3 estimateObservationPose(nlohmann::json camera_model, std::vector<TagDetection> tags, std::string ideal_map_path);
 }
 #endif // FIELDCALIBRATION_H

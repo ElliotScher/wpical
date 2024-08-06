@@ -30,15 +30,18 @@ find_package(Ceres CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(suitesparse REQUIRED)
+find_package(GTSAM REQUIRED)
 
 # Add the executable and specify the source files
 add_executable(${PROJECT_NAME} 
-    src/cpp/WPIcal.cpp 
-    src/cpp/fieldcalibration.cpp 
     src/cpp/cameracalibration.cpp
+    src/cpp/fieldcalibration.cpp 
     src/cpp/fieldmap.cpp
     src/cpp/fmap.cpp
+    src/cpp/gtsam_utils.cpp
+    src/cpp/tagmodel.cpp
     src/cpp/tagpose.cpp
+    src/cpp/WPIcal.cpp
     ${outlineviewer_resources_src}
     ${outlineviewer_rc}
 )
@@ -55,6 +58,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     wpigui
     imgui
     mrcal_jni
+    gtsam
     apriltag::apriltag
     Eigen3::Eigen
     Ceres::ceres

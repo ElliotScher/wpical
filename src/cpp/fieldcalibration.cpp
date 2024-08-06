@@ -3,6 +3,10 @@
 // the WPILib BSD license file in the root directory of this project.
 
 #include "fieldcalibration.h"
+#include <gtsam/inference/Symbol.h>
+using gtsam::symbol_shorthand::L;
+using gtsam::symbol_shorthand::X;
+#include <gtsam/slam/expressions.h>
 
 class PoseGraphError
 {
@@ -819,6 +823,161 @@ int fieldcalibration::calibrate(std::string input_dir_path, std::string output_f
 
   std::ofstream output_file(output_file_path);
   output_file << observed_map_json.dump(4) << std::endl;
+
+  return 0;
+}
+
+gtsam::Pose3 estimateObservationPose(nlohmann::json camera_model, std::vector<TagDetection> tags, std::string ideal_map_path)
+{
+  std::ifstream file(ideal_map_path);
+  nlohmann::json ideal_map = nlohmann::json::parse(file);
+
+  auto fx = camera_model["camera_matrix"][0];
+  auto fy = camera_model["camera_matrix"][4];
+  auto cx = camera_model["camera_matrix"][2];
+  auto cy = camera_model["camera_matrix"][5];
+
+  cv::Mat camera_matrix = (cv::Mat_<double>(3, 3) << fx, 0, cx, 0, fy, cy, 0, 0, 1);
+  std::vector<double> distortion_coeff_vector = camera_model["distortion coefficients"].get<std::vector<double>>();
+  cv::Mat distortion_coeffs = cv::Mat(distortion_coeff_vector);
+
+  std::vector<cv::Point3f> world_points;
+  std::vector<cv::Point2f> image_points;
+
+  for (auto &tag : tags)
+  {
+    for (int i = 0; i < tag.corners.size(); i++)
+    {
+      image_points.push_back(cv::Point2f(tag.corners[i].first, tag.corners[i].second));
+      std::vector<gtsam::Point3> corners = tagmodel::WorldToCorners(tag.id, ideal_map).value();
+      world_points.push_back(cv::Point3f(corners[i].x(), corners[i].y(), corners[i].z())); // make sure the corner order given to the function matches up with the corners gotten from worldtocorners()
+    }
+  }
+
+  if (world_points.empty() || image_points.empty())
+  {
+    return {};
+  }
+
+  cv::Mat rvec, tvec;
+
+  bool success = cv::solvePnP(world_points, image_points, camera_matrix, distortion_coeffs, rvec, tvec);
+  if (!success)
+  {
+    return gtsam::Pose3{gtsam::Rot3{0.0, 0.0, 0.0, 0.0}, gtsam::Point3{0.0, 0.0, 0.0}};
+  }
+
+  cv::Mat R;
+  cv::Rodrigues(rvec, R);
+
+  Eigen::Matrix3d rotation;
+  cv::cv2eigen(R, rotation);
+  Eigen::Vector3d translation;
+  cv::cv2eigen(tvec, translation);
+
+  return gtsam::Pose3(gtsam::Rot3(rotation), translation);
+}
+
+int gtsam_calibrate(std::string input_dir_path, std::string output_file_path,
+                    nlohmann::json camera_model, std::string ideal_map_path,
+                    int pinned_tag_id, int detection_fps)
+{
+  auto fx = camera_model["camera_matrix"][0];
+  auto fy = camera_model["camera_matrix"][4];
+  auto cx = camera_model["camera_matrix"][2];
+  auto cy = camera_model["camera_matrix"][5];
+
+  // Camera calibration parameters. Order is [fx fy skew cx cy] in pixels
+  gtsam::Cal3_S2 K(fx, fy, 0.0, cx, cy);
+  gtsam::noiseModel::Isotropic::shared_ptr cameraNoise =
+      gtsam::noiseModel::Isotropic::Sigma(2, 1.0); // one pixel in u and v
+
+  // Noise on our pose prior. order is rx, ry, rz, tx, ty, tz, and units are
+  // [rad] and [m]
+  gtsam::Vector6 sigmas;
+  sigmas << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(0.3);
+  auto posePriorNoise = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
+
+  // Our platform and camera are coincident
+  gtsam::Pose3 robotTcamera{};
+
+  // constant Expression for the calibration we can reuse
+  gtsam::Cal3_S2_ cameraCal(K);
+
+  // List of tag observations - TODO: overload processvideofile() to return this?
+  std::map<gtsam::Key, std::vector<TagDetection>> points{};
+
+  std::ifstream file(ideal_map_path);
+  auto tagLayoutGuess = nlohmann::json::parse(file);
+
+  gtsam::ExpressionFactorGraph graph;
+
+  // Add all our tag observations
+  for (const auto &[stateKey, tags] : points)
+  {
+    for (const TagDetection &tag : tags)
+    {
+      auto worldPcorners = tagmodel::WorldToCornersFactor(L(tag.id));
+
+      // add each tag corner
+      constexpr int NUM_CORNERS = 4;
+      for (size_t i = 0; i < NUM_CORNERS; i++)
+      {
+        // Decision variable - where our camera is in the world
+        const gtsam::Pose3_ worldTbody_fac(stateKey);
+
+        // Where we'd predict the i'th corner of the tag to be
+        const auto prediction = gtsamutils::PredictLandmarkImageLocationFactor(
+            worldTbody_fac, robotTcamera, cameraCal, worldPcorners[i]);
+
+        // where we saw the i'th corner in the image
+        gtsam::Point2 measurement = {tag.corners[i].first, tag.corners[i].second};
+
+        // Add this prediction/measurement pair to our graph
+        graph.addExpressionFactor(prediction, measurement, cameraNoise);
+      }
+    }
+  }
+
+  auto worldTtag1 = tagmodel::worldToTag(pinned_tag_id, tagLayoutGuess);
+  if (!worldTtag1)
+  {
+    std::cout << "Couldnt find tag in map!" << std::endl;
+  }
+  graph.addPrior(L(pinned_tag_id), *worldTtag1, posePriorNoise);
+
+  // Initial guess for our optimizer. Needs to be in the right ballpark, but
+  // accuracy doesn't super matter
+  gtsam::Values initial;
+
+  // Guess for all camera poses
+  for (const auto &[stateKey, tags] : points)
+  {
+    // Initial guess at camera pose based on regular old multi tag pose
+    // esitmation
+    auto worldTcam_guess = estimateObservationPose(camera_model, tags, tagLayoutGuess);
+    initial.insert<gtsam::Pose3>(stateKey, worldTcam_guess);
+  }
+
+  for (auto &tag : tagLayoutGuess["tags"].items())
+  {
+    double tagXPos = tag.value()["pose"]["translation"]["x"];
+    double tagYPos = tag.value()["pose"]["translation"]["y"];
+    double tagZPos = tag.value()["pose"]["translation"]["z"];
+    double tagWQuat = tag.value()["pose"]["rotation"]["quaternion"]["W"];
+    double tagXQuat = tag.value()["pose"]["rotation"]["quaternion"]["X"];
+    double tagYQuat = tag.value()["pose"]["rotation"]["quaternion"]["Y"];
+    double tagZQuat = tag.value()["pose"]["rotation"]["quaternion"]["Z"];
+
+    gtsam::Rot3 rotation(tagWQuat, tagXQuat, tagYQuat, tagZQuat);
+    gtsam::Point3 translation(tagXPos, tagYPos, tagZPos);
+
+    initial.insert(L(tag.value()), gtsam::Pose3{rotation, translation});
+  }
+
+  /* Optimize the graph and print results */
+  gtsam::Values result = gtsam::DoglegOptimizer(graph, initial).optimize();
+  std::cout << "final error = " << graph.error(result) << std::endl;
 
   return 0;
 }
