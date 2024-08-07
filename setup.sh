@@ -59,6 +59,13 @@ install_package linux-libc-dev
 install_package libxml2
 install_package libxml2-dev
 install_package gfortran
+install_package libsystemd-dev
+install_package python3-jinja2
+install_package python3-dev
+install_package openjdk-8-jdk
+install_package liblist-moreutils-perl
+install_package libsuitesparse-dev
+
 git clone https://github.com/microsoft/vcpkg.git
 cd vcpkg
 ./bootstrap-vcpkg.sh

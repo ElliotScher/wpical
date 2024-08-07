@@ -2,3 +2,5 @@
 /vcpkg
 /Output
 /.vscode
+/CMakeFiles
+CMakeCache.txt
