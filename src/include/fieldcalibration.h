@@ -41,8 +41,10 @@ struct Pose
 
 struct Constraint
 {
-    int id_tag;
-    std::vector<Eigen::Vector2d> observed_corners;
+  int id_begin;
+  int id_end;
+  Pose t_begin_end;
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 namespace fieldcalibration
