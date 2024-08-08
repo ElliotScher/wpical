@@ -41,10 +41,8 @@ struct Pose
 
 struct Constraint
 {
-  int id_begin;
-  int id_end;
-  Pose t_begin_end;
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    int id_tag;
+    std::vector<Eigen::Vector2d> observed_corners;
 };
 
 namespace fieldcalibration
@@ -52,6 +50,7 @@ namespace fieldcalibration
   std::tuple<Eigen::Matrix<double, 3, 3>, Eigen::Matrix<double, 8, 1>> load_camera_model(std::string path);
   std::tuple<Eigen::Matrix<double, 3, 3>, Eigen::Matrix<double, 8, 1>> load_camera_model(nlohmann::json json_data);
   std::map<int, nlohmann::json> load_ideal_map(std::string path);
+  std::vector<Eigen::Vector3d> get_model_corners(double tag_size);
   Eigen::Matrix<double, 4, 4> get_tag_transform(std::map<int, nlohmann::json> &ideal_map, int tag_id);
   Eigen::Matrix<double, 4, 4> estimate_tag_pose(
       apriltag_detection_t *tag_detection,

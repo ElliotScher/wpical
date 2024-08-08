@@ -4,55 +4,86 @@
 
 #include "fieldcalibration.h"
 
-class PoseGraphError
+class ReprojectionError
 {
 public:
-  PoseGraphError(Pose t_ab_observed)
-      : m_t_ab_observed(std::move(t_ab_observed)) {}
+  ReprojectionError(const std::vector<Eigen::Vector2d> &observed_corners,
+                    const std::vector<Eigen::Vector3d> &model_corners,
+                    const Eigen::Matrix3d &camera_matrix,
+                    const Eigen::VectorXd &distortion_coeffs)
+      : observed_corners_(observed_corners),
+        model_corners_(model_corners),
+        camera_matrix_(camera_matrix),
+        distortion_coeffs_(distortion_coeffs) {}
 
   template <typename T>
-  bool operator()(const T *const p_a_ptr, const T *const q_a_ptr,
-                  const T *const p_b_ptr, const T *const q_b_ptr,
-                  T *residuals_ptr) const
+  bool operator()(const T *const tag_translation,
+                  const T *const tag_quaternion,
+                  T *residuals) const
   {
-    // Tag A
-    Eigen::Map<const Eigen::Matrix<T, 3, 1>> p_a(p_a_ptr);
-    Eigen::Map<const Eigen::Quaternion<T>> q_a(q_a_ptr);
 
-    // Tag B
-    Eigen::Map<const Eigen::Matrix<T, 3, 1>> p_b(p_b_ptr);
-    Eigen::Map<const Eigen::Quaternion<T>> q_b(q_b_ptr);
+    // Convert translation and quaternion to a transformation matrix
+    Eigen::Map<const Eigen::Matrix<T, 3, 1>> t(tag_translation);
+    Eigen::Quaternion<T> q(tag_quaternion[3], tag_quaternion[0],
+                           tag_quaternion[1], tag_quaternion[2]);
 
-    // Rotation between tag A to tag B
-    Eigen::Quaternion<T> q_a_inverse = q_a.conjugate();
-    Eigen::Quaternion<T> q_ab_estimated = q_a_inverse * q_b;
+    // Ensure the quaternion is normalized
+    q.normalize();
 
-    // Displacement between tag A and tag B in tag A's frame
-    Eigen::Matrix<T, 3, 1> p_ab_estimated = q_a_inverse * (p_b - p_a);
+    Eigen::Matrix<T, 3, 3> R = q.toRotationMatrix();
 
-    // Error between the orientations
-    Eigen::Quaternion<T> delta_q =
-        m_t_ab_observed.q.template cast<T>() * q_ab_estimated.conjugate();
+    std::cout << t << std::endl
+              << q << std::endl;
 
-    // Residuals
-    Eigen::Map<Eigen::Matrix<T, 6, 1>> residuals(residuals_ptr);
-    residuals.template block<3, 1>(0, 0) =
-        p_ab_estimated - m_t_ab_observed.p.template cast<T>();
-    residuals.template block<3, 1>(3, 0) = T(2.0) * delta_q.vec();
+    // Project each model corner into the image plane
+    for (size_t i = 0; i < model_corners_.size(); ++i)
+    {
+      Eigen::Matrix<T, 3, 1> model_corner_T = model_corners_[i].cast<T>();
+      Eigen::Matrix<T, 3, 1> world_point = R * model_corner_T + t;
+
+      // Project the 3D point to 2D
+      T x = world_point.x() / world_point.z();
+      T y = world_point.y() / world_point.z();
+
+      // Apply intrinsic camera matrix
+      T fx = T(camera_matrix_(0, 0));
+      T fy = T(camera_matrix_(1, 1));
+      T cx = T(camera_matrix_(0, 2));
+      T cy = T(camera_matrix_(1, 2));
+
+      T predicted_x = fx * x + cx;
+      T predicted_y = fy * y + cy;
+
+      // Apply radial distortion correction if needed
+      T r2 = x * x + y * y;
+      T distortion = T(1.0) + r2 * (distortion_coeffs_(0) + r2 * (distortion_coeffs_(1) + r2 * distortion_coeffs_(4)));
+
+      predicted_x *= distortion;
+      predicted_y *= distortion;
+
+      // Compute residuals (difference between observed and predicted points)
+      residuals[2 * i] = predicted_x - T(observed_corners_[i].x());
+      residuals[2 * i + 1] = predicted_y - T(observed_corners_[i].y());
+    }
 
     return true;
   }
 
-  static ceres::CostFunction *Create(const Pose &t_ab_observed)
+  static ceres::CostFunction *Create(const std::vector<Eigen::Vector2d> &observed_corners,
+                                     const std::vector<Eigen::Vector3d> &model_corners,
+                                     const Eigen::Matrix3d &camera_matrix,
+                                     const Eigen::VectorXd &distortion_coeffs)
   {
-    return new ceres::AutoDiffCostFunction<PoseGraphError, 6, 3, 4, 3, 4>(
-        new PoseGraphError(t_ab_observed));
+    return new ceres::AutoDiffCostFunction<ReprojectionError, ceres::DYNAMIC, 3, 4>(
+        new ReprojectionError(observed_corners, model_corners, camera_matrix, distortion_coeffs),
+        observed_corners.size() * 2);
   }
 
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
 private:
-  const Pose m_t_ab_observed;
+  const std::vector<Eigen::Vector2d> observed_corners_;
+  const std::vector<Eigen::Vector3d> model_corners_;
+  const Eigen::Matrix3d camera_matrix_;
+  const Eigen::VectorXd distortion_coeffs_;
 };
 
 std::tuple<Eigen::Matrix<double, 3, 3>, Eigen::Matrix<double, 8, 1>>
@@ -206,6 +237,17 @@ Eigen::Matrix<double, 4, 4> fieldcalibration::get_tag_transform(
   transform(2, 3) = ideal_map[tag_id]["pose"]["translation"]["z"];
 
   return transform;
+}
+
+std::vector<Eigen::Vector3d> getModelCorners(double tag_size)
+{
+  double half_size = tag_size / 2.0;
+  std::vector<Eigen::Vector3d> model_corners;
+  model_corners.emplace_back(-half_size, -half_size, 0.0);
+  model_corners.emplace_back(half_size, -half_size, 0.0);
+  model_corners.emplace_back(half_size, half_size, 0.0);
+  model_corners.emplace_back(-half_size, half_size, 0.0);
+  return model_corners;
 }
 
 Eigen::Matrix<double, 4, 4> fieldcalibration::estimate_tag_pose(
@@ -366,10 +408,8 @@ bool fieldcalibration::process_video_file(
     frame_debug = frame.clone();
 
     // Detect tags
-    image_u8_t tag_image = {frame_gray.cols, frame_gray.rows, frame_gray.cols,
-                            frame_gray.data};
-    zarray_t *tag_detections =
-        apriltag_detector_detect(tag_detector, &tag_image);
+    image_u8_t tag_image = {frame_gray.cols, frame_gray.rows, frame_gray.cols, frame_gray.data};
+    zarray_t *tag_detections = apriltag_detector_detect(tag_detector, &tag_image);
 
     // Skip this loop if there are no tags detected
     if (zarray_size(tag_detections) == 0)
@@ -378,64 +418,27 @@ bool fieldcalibration::process_video_file(
       continue;
     }
 
-    // Find detection with the smallest tag ID
-    apriltag_detection_t *tag_detection_min = nullptr;
-    zarray_get(tag_detections, 0, &tag_detection_min);
-
     for (int i = 0; i < zarray_size(tag_detections); i++)
     {
-      apriltag_detection_t *tag_detection_i;
-      zarray_get(tag_detections, i, &tag_detection_i);
+      apriltag_detection_t *tag_detection;
+      zarray_get(tag_detections, i, &tag_detection);
 
-      if (tag_detection_i->id < tag_detection_min->id)
+      std::vector<Eigen::Vector2d> observed_corners;
+
+      // Extract observed 2D corners from detection
+      for (int j = 0; j < 4; j++)
       {
-        tag_detection_min = tag_detection_i;
-      }
-    }
-
-    Eigen::Matrix<double, 4, 4> camera_to_tag_min = estimate_tag_pose(
-        tag_detection_min, camera_matrix, camera_distortion, tag_size);
-
-    // Find transformation from smallest tag ID
-    for (int i = 0; i < zarray_size(tag_detections); i++)
-    {
-      apriltag_detection_t *tag_detection_i;
-      zarray_get(tag_detections, i, &tag_detection_i);
-
-      // Add tag ID to poses
-      if (poses.find(tag_detection_i->id) == poses.end())
-      {
-        poses[tag_detection_i->id] = {};
-        poses[tag_detection_i->id].p = Eigen::Vector3d(0.0, 0.0, 0.0);
-        poses[tag_detection_i->id].q = Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0);
+        Eigen::Vector2d corner(tag_detection->p[j][0], tag_detection->p[j][1]);
+        observed_corners.push_back(corner);
       }
 
-      // Estimate camera to tag pose
-      Eigen::Matrix<double, 4, 4> caamera_to_tag = estimate_tag_pose(
-          tag_detection_i, camera_matrix, camera_distortion, tag_size);
-
-      // Draw debug cube
-      draw_tag_cube(frame_debug, caamera_to_tag, camera_matrix,
-                    camera_distortion, tag_size);
-
-      // Skip finding transformation from smallest tag ID to itself
-      if (tag_detection_i->id == tag_detection_min->id)
-      {
-        continue;
-      }
-
-      Eigen::Matrix<double, 4, 4> tag_min_to_tag =
-          camera_to_tag_min.inverse() * caamera_to_tag;
-
-      // Constraint
-      Constraint constraint;
-      constraint.id_begin = tag_detection_min->id;
-      constraint.id_end = tag_detection_i->id;
-      constraint.t_begin_end.p = tag_min_to_tag.block<3, 1>(0, 3);
-      constraint.t_begin_end.q =
-          Eigen::Quaterniond(tag_min_to_tag.block<3, 3>(0, 0));
-
+      // Create and store the constraint
+      Constraint constraint(tag_detection->id, observed_corners);
       constraints.push_back(constraint);
+
+      // Draw debug cube (optional)
+      Eigen::Matrix<double, 4, 4> camera_to_tag = estimate_tag_pose(tag_detection, camera_matrix, camera_distortion, tag_size);
+      draw_tag_cube(frame_debug, camera_to_tag, camera_matrix, camera_distortion, tag_size);
     }
 
     apriltag_detections_destroy(tag_detections);
@@ -505,24 +508,18 @@ int fieldcalibration::calibrate(std::string input_dir_path, std::string output_f
   ceres::Problem problem;
   ceres::Manifold *quaternion_manifold = new ceres::EigenQuaternionManifold;
 
+  // Assume a fixed model for tags
+  auto model_corners = getModelCorners(0.1651);
+
   for (const auto &constraint : constraints)
   {
-    auto pose_begin_iter = poses.find(constraint.id_begin);
-    auto pose_end_iter = poses.find(constraint.id_end);
-
     ceres::CostFunction *cost_function =
-        PoseGraphError::Create(constraint.t_begin_end);
+        ReprojectionError::Create(constraint.observed_corners, model_corners, camera_matrix, camera_distortion);
 
     problem.AddResidualBlock(cost_function, nullptr,
-                             pose_begin_iter->second.p.data(),
-                             pose_begin_iter->second.q.coeffs().data(),
-                             pose_end_iter->second.p.data(),
-                             pose_end_iter->second.q.coeffs().data());
+                             poses[constraint.id_tag].p.data(), poses[constraint.id_tag].q.coeffs().data());
 
-    problem.SetManifold(pose_begin_iter->second.q.coeffs().data(),
-                        quaternion_manifold);
-    problem.SetManifold(pose_end_iter->second.q.coeffs().data(),
-                        quaternion_manifold);
+    problem.SetManifold(poses[constraint.id_tag].q.coeffs().data(), quaternion_manifold);
   }
 
   // Pin tag
@@ -530,8 +527,7 @@ int fieldcalibration::calibrate(std::string input_dir_path, std::string output_f
   if (pinned_tag_iter != poses.end())
   {
     problem.SetParameterBlockConstant(pinned_tag_iter->second.p.data());
-    problem.SetParameterBlockConstant(
-        pinned_tag_iter->second.q.coeffs().data());
+    problem.SetParameterBlockConstant(pinned_tag_iter->second.q.coeffs().data());
   }
 
   // Solve
@@ -559,75 +555,31 @@ int fieldcalibration::calibrate(std::string input_dir_path, std::string output_f
 
   for (const auto &[tag_id, pose] : poses)
   {
-    // Transformation from pinned tag
-    Eigen::Matrix<double, 4, 4> transform =
-        Eigen::Matrix<double, 4, 4>::Identity();
-
+    Eigen::Matrix<double, 4, 4> transform = Eigen::Matrix<double, 4, 4>::Identity();
     transform.block<3, 3>(0, 0) = pose.q.toRotationMatrix();
     transform.block<3, 1>(0, 3) = pose.p;
 
-    // Transformation from world
     Eigen::Matrix<double, 4, 4> corrected_transform =
         pinned_tag_transform * correction_a * transform * correction_b;
-    Eigen::Quaternion<double> corrected_transform_q(
-        corrected_transform.block<3, 3>(0, 0));
+    Eigen::Quaternion<double> corrected_transform_q(corrected_transform.block<3, 3>(0, 0));
 
-    observed_map[tag_id]["pose"]["translation"]["x"] =
-        corrected_transform(0, 3);
-    observed_map[tag_id]["pose"]["translation"]["y"] =
-        corrected_transform(1, 3);
-    observed_map[tag_id]["pose"]["translation"]["z"] =
-        corrected_transform(2, 3);
+    observed_map[tag_id]["pose"]["translation"]["x"] = corrected_transform(0, 3);
+    observed_map[tag_id]["pose"]["translation"]["y"] = corrected_transform(1, 3);
+    observed_map[tag_id]["pose"]["translation"]["z"] = corrected_transform(2, 3);
 
-    observed_map[tag_id]["pose"]["rotation"]["quaternion"]["X"] =
-        corrected_transform_q.x();
-    observed_map[tag_id]["pose"]["rotation"]["quaternion"]["Y"] =
-        corrected_transform_q.y();
-    observed_map[tag_id]["pose"]["rotation"]["quaternion"]["Z"] =
-        corrected_transform_q.z();
-    observed_map[tag_id]["pose"]["rotation"]["quaternion"]["W"] =
-        corrected_transform_q.w();
+    observed_map[tag_id]["pose"]["rotation"]["quaternion"]["X"] = corrected_transform_q.x();
+    observed_map[tag_id]["pose"]["rotation"]["quaternion"]["Y"] = corrected_transform_q.y();
+    observed_map[tag_id]["pose"]["rotation"]["quaternion"]["Z"] = corrected_transform_q.z();
+    observed_map[tag_id]["pose"]["rotation"]["quaternion"]["W"] = corrected_transform_q.w();
   }
 
   nlohmann::json observed_map_json;
-
   for (const auto &[tag_id, tag_json] : observed_map)
   {
     observed_map_json["tags"].push_back(tag_json);
   }
 
-  observed_map_json["field"] = {
-      {"length", 16.541},
-      {"width", 8.211}};
-
-  // for (const auto& constraint : constraints)
-  // {
-  // nlohmann::json output_constraint;
-
-  // output_constraint["from_id"] = constraint.id_begin;
-  // output_constraint["to_id"] = constraint.id_end;
-
-  // output_constraint["transform"]["translation"]["x"] =
-  // constraint.t_begin_end.p[0];
-  // output_constraint["transform"]["translation"]["y"] =
-  // constraint.t_begin_end.p[1];
-  // output_constraint["transform"]["translation"]["z"] =
-  // constraint.t_begin_end.p[2];
-
-  // output_constraint["transform"]["rotation"]["x"] =
-  // constraint.t_begin_end.q.x();
-  // output_constraint["transform"]["rotation"]["y"] =
-  // constraint.t_begin_end.q.y();
-  // output_constraint["transform"]["rotation"]["z"] =
-  // constraint.t_begin_end.q.z();
-  // output_constraint["transform"]["rotation"]["w"] =
-  // constraint.t_begin_end.q.w();
-
-  // output["constraints"].push_back(output_constraint);
-
-  // std::cout << constraint.id_begin << " -- " << constraint.id_end <<
-  // std::endl;
-  // }
+  observed_map_json["field"] = {{"length", 16.541}, {"width", 8.211}};
 
   std::ofstream output_file(output_file_path);
   output_file << observed_map_json.dump(4) << std::endl;
@@ -693,24 +645,18 @@ int fieldcalibration::calibrate(std::string input_dir_path, std::string output_f
   ceres::Problem problem;
   ceres::Manifold *quaternion_manifold = new ceres::EigenQuaternionManifold;
 
+  // Assume a fixed model for tags
+  auto model_corners = getModelCorners(0.1651);
+
   for (const auto &constraint : constraints)
   {
-    auto pose_begin_iter = poses.find(constraint.id_begin);
-    auto pose_end_iter = poses.find(constraint.id_end);
-
     ceres::CostFunction *cost_function =
-        PoseGraphError::Create(constraint.t_begin_end);
+        ReprojectionError::Create(constraint.observed_corners, model_corners, camera_matrix, camera_distortion);
 
     problem.AddResidualBlock(cost_function, nullptr,
-                             pose_begin_iter->second.p.data(),
-                             pose_begin_iter->second.q.coeffs().data(),
-                             pose_end_iter->second.p.data(),
-                             pose_end_iter->second.q.coeffs().data());
+                             poses[constraint.id_tag].p.data(), poses[constraint.id_tag].q.coeffs().data());
 
-    problem.SetManifold(pose_begin_iter->second.q.coeffs().data(),
-                        quaternion_manifold);
-    problem.SetManifold(pose_end_iter->second.q.coeffs().data(),
-                        quaternion_manifold);
+    problem.SetManifold(poses[constraint.id_tag].q.coeffs().data(), quaternion_manifold);
   }
 
   // Pin tag
@@ -718,8 +664,7 @@ int fieldcalibration::calibrate(std::string input_dir_path, std::string output_f
   if (pinned_tag_iter != poses.end())
   {
     problem.SetParameterBlockConstant(pinned_tag_iter->second.p.data());
-    problem.SetParameterBlockConstant(
-        pinned_tag_iter->second.q.coeffs().data());
+    problem.SetParameterBlockConstant(pinned_tag_iter->second.q.coeffs().data());
   }
 
   // Solve
@@ -747,75 +692,31 @@ int fieldcalibration::calibrate(std::string input_dir_path, std::string output_f
 
   for (const auto &[tag_id, pose] : poses)
   {
-    // Transformation from pinned tag
-    Eigen::Matrix<double, 4, 4> transform =
-        Eigen::Matrix<double, 4, 4>::Identity();
-
+    Eigen::Matrix<double, 4, 4> transform = Eigen::Matrix<double, 4, 4>::Identity();
     transform.block<3, 3>(0, 0) = pose.q.toRotationMatrix();
     transform.block<3, 1>(0, 3) = pose.p;
 
-    // Transformation from world
     Eigen::Matrix<double, 4, 4> corrected_transform =
         pinned_tag_transform * correction_a * transform * correction_b;
-    Eigen::Quaternion<double> corrected_transform_q(
-        corrected_transform.block<3, 3>(0, 0));
+    Eigen::Quaternion<double> corrected_transform_q(corrected_transform.block<3, 3>(0, 0));
 
-    observed_map[tag_id]["pose"]["translation"]["x"] =
-        corrected_transform(0, 3);
-    observed_map[tag_id]["pose"]["translation"]["y"] =
-        corrected_transform(1, 3);
-    observed_map[tag_id]["pose"]["translation"]["z"] =
-        corrected_transform(2, 3);
+    observed_map[tag_id]["pose"]["translation"]["x"] = corrected_transform(0, 3);
+    observed_map[tag_id]["pose"]["translation"]["y"] = corrected_transform(1, 3);
+    observed_map[tag_id]["pose"]["translation"]["z"] = corrected_transform(2, 3);
 
-    observed_map[tag_id]["pose"]["rotation"]["quaternion"]["X"] =
-        corrected_transform_q.x();
-    observed_map[tag_id]["pose"]["rotation"]["quaternion"]["Y"] =
-        corrected_transform_q.y();
-    observed_map[tag_id]["pose"]["rotation"]["quaternion"]["Z"] =
-        corrected_transform_q.z();
-    observed_map[tag_id]["pose"]["rotation"]["quaternion"]["W"] =
-        corrected_transform_q.w();
+    observed_map[tag_id]["pose"]["rotation"]["quaternion"]["X"] = corrected_transform_q.x();
+    observed_map[tag_id]["pose"]["rotation"]["quaternion"]["Y"] = corrected_transform_q.y();
+    observed_map[tag_id]["pose"]["rotation"]["quaternion"]["Z"] = corrected_transform_q.z();
+    observed_map[tag_id]["pose"]["rotation"]["quaternion"]["W"] = corrected_transform_q.w();
   }
 
   nlohmann::json observed_map_json;
-
   for (const auto &[tag_id, tag_json] : observed_map)
   {
     observed_map_json["tags"].push_back(tag_json);
   }
 
-  observed_map_json["field"] = {
-      {"length", 16.541},
-      {"width", 8.211}};
-
-  // for (const auto& constraint : constraints)
-  // {
-  // nlohmann::json output_constraint;
-
-  // output_constraint["from_id"] = constraint.id_begin;
-  // output_constraint["to_id"] = constraint.id_end;
-
-  // output_constraint["transform"]["translation"]["x"] =
-  // constraint.t_begin_end.p[0];
-  // output_constraint["transform"]["translation"]["y"] =
-  // constraint.t_begin_end.p[1];
-  // output_constraint["transform"]["translation"]["z"] =
-  // constraint.t_begin_end.p[2];
-
-  // output_constraint["transform"]["rotation"]["x"] =
-  // constraint.t_begin_end.q.x();
-  // output_constraint["transform"]["rotation"]["y"] =
-  // constraint.t_begin_end.q.y();
-  // output_constraint["transform"]["rotation"]["z"] =
-  // constraint.t_begin_end.q.z();
-  // output_constraint["transform"]["rotation"]["w"] =
-  // constraint.t_begin_end.q.w();
-
-  // output["constraints"].push_back(output_constraint);
-
-  // std::cout << constraint.id_begin << " -- " << constraint.id_end <<
-  // std::endl;
-  // }
+  observed_map_json["field"] = {{"length", 16.541}, {"width", 8.211}};
 
   std::ofstream output_file(output_file_path);
   output_file << observed_map_json.dump(4) << std::endl;

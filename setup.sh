@@ -65,6 +65,7 @@ install_package python3-dev
 install_package openjdk-8-jdk
 install_package liblist-moreutils-perl
 install_package libsuitesparse-dev
+install_package zenity
 
 git clone https://github.com/microsoft/vcpkg.git
 cd vcpkg
