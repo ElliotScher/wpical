@@ -19,6 +19,7 @@
         ]
       },
       "eigen3",
-      "nlohmann-json"
+      "nlohmann-json",
+      "gtest"
     ]
 }

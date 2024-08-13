@@ -97,7 +97,6 @@ static void DisplayGui()
   static int boardHeight = 8;
   static double imagerWidth = 0;
   static double imagerHeight = 0;
-  static double focalLengthGuess = 0;
 
   static int pinnedTag = 1;
   static int fps = 15;
@@ -303,6 +302,21 @@ static void DisplayGui()
   if (ImGui::BeginPopupModal("Camera Calibration", NULL,
                              ImGuiWindowFlags_AlwaysAutoResize))
   {
+
+    // atypical calibration popup window
+    if (ImGui::BeginPopupModal("Atypical", NULL,
+                               ImGuiWindowFlags_AlwaysAutoResize))
+    {
+      ImGui::TextWrapped(
+          "Camera calibration failed. Please make sure you have uploaded the correct video file");
+      ImGui::Separator();
+      if (ImGui::Button("OK", ImVec2(120, 0)))
+      {
+        ImGui::CloseCurrentPopup();
+      }
+      ImGui::EndPopup();
+    }
+
     if (ImGui::Button("MRcal"))
     {
       mrcal = true;
@@ -347,36 +361,36 @@ static void DisplayGui()
       ImGui::InputDouble("Image Width (pixels)", &imagerWidth);
       ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
       ImGui::InputDouble("Image Height (pixels)", &imagerHeight);
-      ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
-      ImGui::InputDouble("Focal Length Estimate (pixels)", &focalLengthGuess);
 
       ImGui::Separator();
       if (ImGui::Button("Calibrate") && !selectedConfigFile.empty())
       {
         std::cout << "calibration button pressed" << std::endl;
-        nlohmann::json cameraJson =
-            cameracalibration::calibrate(selectedConfigFile.c_str(), squareWidth,
-                                         boardWidth, boardHeight, imagerWidth, imagerHeight, focalLengthGuess);
-
-        std::string output_filename = selectedConfigFile;
-
-        size_t pos = output_filename.rfind('/');
-
-        if (pos != std::string::npos)
+        int ret = cameracalibration::calibrate(selectedConfigFile.c_str(), squareWidth,
+                                               boardWidth, boardHeight, imagerWidth, imagerHeight, true);
+        if (ret == 0)
         {
-          output_filename = output_filename.erase(pos);
+          size_t lastSeparatorPos = selectedConfigFile.find_last_of("/\\");
+          std::string output_file_path;
+
+          if (lastSeparatorPos != std::string::npos)
+          {
+            output_file_path = selectedConfigFile.substr(0, lastSeparatorPos).append("/camera calibration.json");
+          }
+
+          selectedConfigFile = output_file_path;
+          ImGui::CloseCurrentPopup();
+        }
+        else if (ret == 1)
+        {
+          std::cout << "calibration failed and popup ready" << std::endl;
+          ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_Always);
+          ImGui::OpenPopup("Atypical");
         }
         else
         {
-          pos = output_filename.rfind('\\');
-          output_filename = output_filename.erase(pos);
+          ImGui::CloseCurrentPopup();
         }
-        std::ofstream ofs(output_filename.append("/camera calibration.json"));
-        ofs << std::setw(4) << cameraJson << std::endl;
-        ofs.close();
-
-        selectedConfigFile = output_filename;
-        ImGui::CloseCurrentPopup();
       }
     }
     else
@@ -412,29 +426,31 @@ static void DisplayGui()
       if (ImGui::Button("Calibrate") && !selectedConfigFile.empty())
       {
         std::cout << "calibration button pressed" << std::endl;
-        nlohmann::json cameraJson =
-            cameracalibration::calibrate(selectedConfigFile.c_str(), squareWidth, markerWidth,
-                                         boardWidth, boardHeight);
-
-        std::string output_filename = selectedConfigFile;
-
-        size_t pos = output_filename.rfind('/');
-
-        if (pos != std::string::npos)
+        int ret = cameracalibration::calibrate(selectedConfigFile.c_str(), squareWidth, markerWidth,
+                                               boardWidth, boardHeight, true);
+        if (ret == 0)
         {
-          output_filename = output_filename.erase(pos);
+          size_t lastSeparatorPos = selectedConfigFile.find_last_of("/\\");
+          std::string output_file_path;
+
+          if (lastSeparatorPos != std::string::npos)
+          {
+            output_file_path = selectedConfigFile.substr(0, lastSeparatorPos).append("/camera calibration.json");
+          }
+
+          selectedConfigFile = output_file_path;
+          ImGui::CloseCurrentPopup();
+        }
+        else if (ret == 1)
+        {
+          std::cout << "calibration failed and popup ready" << std::endl;
+          ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_Always);
+          ImGui::OpenPopup("Atypical");
         }
         else
         {
-          pos = output_filename.rfind('\\');
-          output_filename = output_filename.erase(pos);
+          ImGui::CloseCurrentPopup();
         }
-        std::ofstream ofs(output_filename.append("/camera calibration.json"));
-        ofs << std::setw(4) << cameraJson << std::endl;
-        ofs.close();
-
-        selectedConfigFile = output_filename;
-        ImGui::CloseCurrentPopup();
       }
     }
 
@@ -447,7 +463,6 @@ static void DisplayGui()
   }
 
   // visualize calibration popup
-  ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_Always);
   if (ImGui::BeginPopupModal("Visualize Calibration", NULL,
                              ImGuiWindowFlags_AlwaysAutoResize))
   {

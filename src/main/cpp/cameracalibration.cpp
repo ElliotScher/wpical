@@ -1,9 +1,8 @@
 #include <cameracalibration.h>
 #include <iostream>
 
-nlohmann::json cameracalibration::calibrate(const std::string &input_video, float square_width, float marker_width, int board_width, int board_height)
+int cameracalibration::calibrate(const std::string &input_video, float square_width, float marker_width, int board_width, int board_height, bool show_debug_window)
 {
-    std::cout << "test print" << std::endl;
     // Aruco Board
     cv::aruco::Dictionary aruco_dict = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_5X5_1000);
     cv::Ptr<cv::aruco::CharucoBoard> charuco_board = new cv::aruco::CharucoBoard(cv::Size(board_width, board_height), square_width * 0.0254, marker_width * 0.0254, aruco_dict);
@@ -80,11 +79,17 @@ nlohmann::json cameracalibration::calibrate(const std::string &input_video, floa
     std::vector<std::vector<cv::Point2f>> corners = {all_corners};
     std::vector<std::vector<int>> ids = {all_ids};
 
-    cv::aruco::calibrateCameraCharuco(
-        corners, ids, charuco_board, frame_shape, camera_matrix, dist_coeffs,
-        r_vecs, t_vecs, std_dev_intrinsics, std_dev_extrinsics, per_view_errors, cv::CALIB_RATIONAL_MODEL);
-
-    std::cout << "Completed camera calibration" << std::endl;
+    try
+    {
+        cv::aruco::calibrateCameraCharuco(
+            corners, ids, charuco_board, frame_shape, camera_matrix, dist_coeffs,
+            r_vecs, t_vecs, std_dev_intrinsics, std_dev_extrinsics, per_view_errors, cv::CALIB_RATIONAL_MODEL);
+    }
+    catch (...)
+    {
+        std::cout << "calibration failed" << std::endl;
+        return 1;
+    }
 
     // Save calibration output
     nlohmann::json camera_model = {
@@ -92,10 +97,23 @@ nlohmann::json cameracalibration::calibrate(const std::string &input_video, floa
         {"distortion_coefficients", std::vector<double>(dist_coeffs.begin<double>(), dist_coeffs.end<double>())},
         {"avg_reprojection_error", cv::mean(per_view_errors)[0]}};
 
-    return camera_model;
+    size_t lastSeparatorPos = input_video.find_last_of("/\\");
+    std::string output_file_path;
+
+    // If a separator is found, return the substring from the beginning to the last separator
+    if (lastSeparatorPos != std::string::npos)
+    {
+        output_file_path = input_video.substr(0, lastSeparatorPos).append("/camera calibration.json");
+    }
+
+    std::ofstream output_file(output_file_path);
+    output_file << camera_model.dump(4) << std::endl;
+
+    std::cout << "calibration succeeded" << std::endl;
+    return 0;
 }
 
-nlohmann::json cameracalibration::calibrate(const std::string &input_video, float square_width, int board_width, int board_height, double imagerWidthPixels, double imagerHeightPixels, double focal_length_guess)
+int cameracalibration::calibrate(const std::string &input_video, float square_width, int board_width, int board_height, double imagerWidthPixels, double imagerHeightPixels, bool show_debug_window)
 {
     // Video capture
     cv::VideoCapture video_capture(input_video);
@@ -162,19 +180,25 @@ nlohmann::json cameracalibration::calibrate(const std::string &input_video, floa
     std::vector<mrcal_point3_t> observations_board;
     std::vector<mrcal_pose_t> frames_rt_toref;
 
+    if (all_points.size() == 0)
+    {
+        std::cout << "calibration failed" << std::endl;
+        return 1;
+    }
+
     for (int i = 0; i < all_points.size(); i++)
     {
         size_t total_points = board_width * boardSize.height * all_points.at(i).size();
         observations_board.reserve(total_points);
         frames_rt_toref.reserve(all_points.at(i).size());
 
-        auto ret = getSeedPose(all_points.at(i).data(), boardSize, imagerSize, square_width * 0.0254, focal_length_guess);
+        auto ret = getSeedPose(all_points.at(i).data(), boardSize, imagerSize, square_width * 0.0254, 1000);
 
         observations_board.insert(observations_board.end(), all_points.at(i).begin(), all_points.at(i).end());
         frames_rt_toref.push_back(ret);
     }
 
-    auto cal_result = mrcal_main(observations_board, frames_rt_toref, boardSize, square_width * 0.0254, imagerSize, focal_length_guess);
+    auto cal_result = mrcal_main(observations_board, frames_rt_toref, boardSize, square_width * 0.0254, imagerSize, 1000);
 
     auto &stats = *cal_result;
 
@@ -213,5 +237,16 @@ nlohmann::json cameracalibration::calibrate(const std::string &input_video, floa
         {"distortion_coefficients", distortionCoefficients},
         {"avg_reprojection_error", stats.rms_error}};
 
-    return result;
+    size_t lastSeparatorPos = input_video.find_last_of("/\\");
+    std::string output_file_path;
+
+    if (lastSeparatorPos != std::string::npos)
+    {
+        output_file_path = input_video.substr(0, lastSeparatorPos).append("/camera calibration.json");
+    }
+
+    std::ofstream output_file(output_file_path);
+    output_file << result.dump(4) << std::endl;
+
+    return 0;
 }
