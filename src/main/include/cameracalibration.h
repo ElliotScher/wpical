@@ -15,7 +15,7 @@
 namespace cameracalibration
 {
     int calibrate(const std::string &input_video, float square_width, float marker_width, int board_width, int board_height, bool show_debug_window);
-    int calibrate(const std::string &input_video, float square_width, int board_width, int board_height, double imagerWidthPixels, double imagerHeightPixels, bool show_debug_window);
+    int calibrate(const std::string &input_video, float square_width, float marker_width, int board_width, int board_height, double imagerWidthPixels, double imagerHeightPixels, bool show_debug_window);
 }
 
 #endif

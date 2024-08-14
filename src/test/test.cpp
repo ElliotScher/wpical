@@ -24,13 +24,13 @@ TEST(Camera_Calibration, OpenCV_Atypical)
 
 TEST(Camera_Calibration, MRcal_Typical)
 {
-  int ret = cameracalibration::calibrate(projectRootPath + "/assets/testcalibration.mp4", 0.709, 12, 8, 1080, 1920, false);
+  int ret = cameracalibration::calibrate(projectRootPath + "/assets/testcalibration.mp4", 0.709, 0.551, 12, 8, 1080, 1920, false);
   EXPECT_EQ(ret, 0);
 }
 
 TEST(Camera_Calibration, MRcal_Atypical)
 {
-  int ret = cameracalibration::calibrate(projectRootPath + "/assets/field video/short.mp4", 0.709, 12, 8, 1080, 1920, false);
+  int ret = cameracalibration::calibrate(projectRootPath + "/assets/field video/short.mp4", 0.709, 0.551, 12, 8, 1080, 1920, false);
   EXPECT_EQ(ret, 1);
 }
 

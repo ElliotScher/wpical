@@ -357,6 +357,8 @@ static void DisplayGui()
       ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
       ImGui::InputDouble("Square Width (in)", &squareWidth);
       ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+      ImGui::InputDouble("Marker Width (in)", &markerWidth);
+      ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
       ImGui::InputInt("Board Width (squares)", &boardWidth);
       ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
       ImGui::InputInt("Board Height (squares)", &boardHeight);
@@ -369,7 +371,7 @@ static void DisplayGui()
       if (ImGui::Button("Calibrate") && !selected_camera_intrinsics.empty())
       {
         std::cout << "calibration button pressed" << std::endl;
-        int ret = cameracalibration::calibrate(selected_camera_intrinsics.c_str(), squareWidth,
+        int ret = cameracalibration::calibrate(selected_camera_intrinsics.c_str(), squareWidth, markerWidth,
                                                boardWidth, boardHeight, imagerWidth, imagerHeight, true);
         if (ret == 0)
         {
