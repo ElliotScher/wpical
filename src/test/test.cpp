@@ -18,7 +18,7 @@ TEST(Camera_Calibration, OpenCV_Typical)
 
 TEST(Camera_Calibration, OpenCV_Atypical)
 {
-  int ret = cameracalibration::calibrate(projectRootPath + "/assets/field video/PXL_20240730_204208090.mp4", 0.709, 0.551, 12, 8, false);
+  int ret = cameracalibration::calibrate(projectRootPath + "/assets/field video/long.mp4", 0.709, 0.551, 12, 8, false);
   EXPECT_EQ(ret, 1);
 }
 
@@ -30,7 +30,7 @@ TEST(Camera_Calibration, MRcal_Typical)
 
 TEST(Camera_Calibration, MRcal_Atypical)
 {
-  int ret = cameracalibration::calibrate(projectRootPath + "/assets/field video/test.mp4", 0.709, 12, 8, 1080, 1920, false);
+  int ret = cameracalibration::calibrate(projectRootPath + "/assets/field video/short.mp4", 0.709, 12, 8, 1080, 1920, false);
   EXPECT_EQ(ret, 1);
 }
 
@@ -42,7 +42,7 @@ TEST(Field_Calibration, Typical)
 
 TEST(Field_Calibration, Atypical_Bad_Camera_Model_Directory)
 {
-  int ret = fieldcalibration::calibrate(projectRootPath + "/assets/field video", projectRootPath + "/assets", projectRootPath + "/assets/field video/PXL_20240730_204208090.mp4", projectRootPath + "/assets/2024-crescendo.json", 3, 15, false);
+  int ret = fieldcalibration::calibrate(projectRootPath + "/assets/field video", projectRootPath + "/assets", projectRootPath + "/assets/field video/long.mp4", projectRootPath + "/assets/2024-crescendo.json", 3, 15, false);
   EXPECT_EQ(ret, 1);
 }
 
