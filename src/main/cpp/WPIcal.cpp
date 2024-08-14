@@ -46,7 +46,6 @@ void drawCheck()
   float thickness = 3.0f;
   draw_list->AddLine(p1, p2, IM_COL32(0, 255, 0, 255), thickness);
   draw_list->AddLine(p2, p3, IM_COL32(0, 255, 0, 255), thickness);
-  draw_list->AddLine(ImVec2(p1.x, p1.y + thickness * 0.5f), ImVec2(p2.x, p2.y + thickness * 0.5f), IM_COL32(0, 255, 0, 255), thickness);
   ImGui::NewLine();
 }
 
@@ -75,19 +74,19 @@ static void DisplayGui()
   }
   ImGui::EndMenuBar();
 
-  static std::unique_ptr<pfd::open_file> configFileSelector;
-  static std::string selectedConfigFile;
+  static std::unique_ptr<pfd::open_file> camera_intrinsics_selector;
+  static std::string selected_camera_intrinsics;
 
-  static std::unique_ptr<pfd::open_file> fieldMapSelector;
-  static std::string selectedFieldMap;
+  static std::unique_ptr<pfd::open_file> field_map_selector;
+  static std::string selected_field_map;
 
-  static std::unique_ptr<pfd::select_folder> calibrationDirectorySelector;
-  static std::string selectedCalibrationDirectory;
+  static std::unique_ptr<pfd::select_folder> field_calibration_directory_selector;
+  static std::string selected_field_calibration_directory;
 
-  static std::unique_ptr<pfd::select_folder> downloadDirectorySelector;
-  static std::string selectedDownloadFolder;
+  static std::unique_ptr<pfd::select_folder> download_directory_selector;
+  static std::string selected_download_directory;
 
-  static std::string calibrationJsonPath;
+  static std::string calibration_json_path;
 
   static bool mrcal = true;
 
@@ -108,10 +107,10 @@ static void DisplayGui()
   static fieldmap currentReferenceMap;
 
   // camera matrix selector button
-  if (ImGui::Button("Upload Camera Matrix"))
+  if (ImGui::Button("Upload Camera Intrinsics"))
   {
-    configFileSelector = std::make_unique<pfd::open_file>(
-        "Select Camera Matrix JSON", "",
+    camera_intrinsics_selector = std::make_unique<pfd::open_file>(
+        "Select Camera Intrinsics JSON", "",
         std::vector<std::string>{"JSON", "*.json"}, pfd::opt::none);
   }
 
@@ -122,21 +121,21 @@ static void DisplayGui()
   // camera calibration button
   if (ImGui::Button("Calibrate Camera"))
   {
-    selectedConfigFile.clear();
+    selected_camera_intrinsics.clear();
     ImGui::OpenPopup("Camera Calibration");
   }
 
-  if (configFileSelector)
+  if (camera_intrinsics_selector)
   {
-    auto selectedFiles = configFileSelector->result();
+    auto selectedFiles = camera_intrinsics_selector->result();
     if (!selectedFiles.empty())
     {
-      selectedConfigFile = selectedFiles[0];
+      selected_camera_intrinsics = selectedFiles[0];
     }
-    configFileSelector.reset();
+    camera_intrinsics_selector.reset();
   }
 
-  if (!selectedConfigFile.empty())
+  if (!selected_camera_intrinsics.empty())
   {
     drawCheck();
   }
@@ -144,22 +143,22 @@ static void DisplayGui()
   // field json selector button
   if (ImGui::Button("Select Field Map JSON"))
   {
-    fieldMapSelector = std::make_unique<pfd::open_file>(
+    field_map_selector = std::make_unique<pfd::open_file>(
         "Select Json File", "",
         std::vector<std::string>{"JSON Files", "*.json"}, pfd::opt::none);
   }
 
-  if (fieldMapSelector)
+  if (field_map_selector)
   {
-    auto selectedFiles = fieldMapSelector->result();
+    auto selectedFiles = field_map_selector->result();
     if (!selectedFiles.empty())
     {
-      selectedFieldMap = selectedFiles[0];
+      selected_field_map = selectedFiles[0];
     }
-    fieldMapSelector.reset();
+    field_map_selector.reset();
   }
 
-  if (!selectedFieldMap.empty())
+  if (!selected_field_map.empty())
   {
     drawCheck();
   }
@@ -167,21 +166,21 @@ static void DisplayGui()
   // field calibration directory selector button
   if (ImGui::Button("Select Field Calibration Folder"))
   {
-    calibrationDirectorySelector = std::make_unique<pfd::select_folder>(
+    field_calibration_directory_selector = std::make_unique<pfd::select_folder>(
         "Select Field Calibration Folder", "");
   }
 
-  if (calibrationDirectorySelector)
+  if (field_calibration_directory_selector)
   {
-    auto selectedFiles = calibrationDirectorySelector->result();
+    auto selectedFiles = field_calibration_directory_selector->result();
     if (!selectedFiles.empty())
     {
-      selectedCalibrationDirectory = selectedFiles;
+      selected_field_calibration_directory = selectedFiles;
     }
-    calibrationDirectorySelector.reset();
+    field_calibration_directory_selector.reset();
   }
 
-  if (!selectedCalibrationDirectory.empty())
+  if (!selected_field_calibration_directory.empty())
   {
     drawCheck();
   }
@@ -206,37 +205,37 @@ static void DisplayGui()
   // calibrate button
   if (ImGui::Button("Calibrate!!!"))
   {
-    if (!selectedCalibrationDirectory.empty() && !selectedConfigFile.empty() &&
-        !selectedFieldMap.empty() && pinnedTag > 0 && pinnedTag <= 16)
+    if (!selected_field_calibration_directory.empty() && !selected_camera_intrinsics.empty() &&
+        !selected_field_map.empty() && pinnedTag > 0 && pinnedTag <= 16)
     {
 
-      downloadDirectorySelector = std::make_unique<pfd::select_folder>("Select Download Folder", "");
-      if (downloadDirectorySelector)
+      download_directory_selector = std::make_unique<pfd::select_folder>("Select Download Folder", "");
+      if (download_directory_selector)
       {
-        auto selectedFiles = downloadDirectorySelector->result();
+        auto selectedFiles = download_directory_selector->result();
         if (!selectedFiles.empty())
         {
-          selectedDownloadFolder = selectedFiles;
+          selected_download_directory = selectedFiles;
         }
-        downloadDirectorySelector.reset();
+        download_directory_selector.reset();
       }
 
-      calibrationJsonPath = selectedDownloadFolder + "/output.json";
+      calibration_json_path = selected_download_directory + "/output.json";
 
       int calibrationOutput = fieldcalibration::calibrate(
-          selectedCalibrationDirectory.c_str(),
-          calibrationJsonPath,
-          selectedConfigFile, selectedFieldMap.c_str(), pinnedTag, fps);
+          selected_field_calibration_directory.c_str(),
+          calibration_json_path,
+          selected_camera_intrinsics, selected_field_map.c_str(), pinnedTag, fps, true);
 
-      if (calibrationOutput == -1)
+      if (calibrationOutput == 1)
       {
-        ImGui::OpenPopup("Error");
+        ImGui::OpenPopup("Field Calibration Error");
       }
       else if (calibrationOutput == 0)
       {
-        std::ifstream caljsonpath(calibrationJsonPath);
+        std::ifstream caljsonpath(calibration_json_path);
         std::string fmap = fmap::convertfmap(nlohmann::json::parse(caljsonpath));
-        std::ofstream out(selectedDownloadFolder + "/output.fmap");
+        std::ofstream out(selected_download_directory + "/output.fmap");
         out << fmap;
         out.close();
         ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_Always);
@@ -249,8 +248,8 @@ static void DisplayGui()
     ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_Always);
     ImGui::OpenPopup("Visualize Calibration");
   }
-  if (selectedCalibrationDirectory.empty() || selectedConfigFile.empty() ||
-      selectedFieldMap.empty())
+  if (selected_field_calibration_directory.empty() || selected_camera_intrinsics.empty() ||
+      selected_field_map.empty())
   {
     ImGui::TextWrapped(
         "Some inputs are empty! please enter your camera calibration video, "
@@ -270,12 +269,16 @@ static void DisplayGui()
   }
 
   // error popup window
-  if (ImGui::BeginPopupModal("Error", NULL,
+  if (ImGui::BeginPopupModal("Field Calibration Error", NULL,
                              ImGuiWindowFlags_AlwaysAutoResize))
   {
-    ImGui::TextWrapped(
-        "Please ensure that the detection FPS is smaller than the field video "
-        "FPS.");
+    ImGui::TextWrapped("Field Calibration Failed - please try again, ensuring that:");
+    ImGui::TextWrapped("- You have selected the correct camera intrinsics JSON or camera calibration video");
+    ImGui::TextWrapped("- You have selected the correct ideal field map JSON");
+    ImGui::TextWrapped("- You have selected the correct field calibration video directory");
+    ImGui::TextWrapped("- Your field calibration video directory contains only field calibration videos and no other files");
+    ImGui::TextWrapped("- Your pinned tag is a valid FRC Apriltag");
+    ImGui::TextWrapped("- Your detection FPS is smaller than the field video FPS.");
     ImGui::Separator();
     if (ImGui::Button("OK", ImVec2(120, 0)))
     {
@@ -303,8 +306,8 @@ static void DisplayGui()
                              ImGuiWindowFlags_AlwaysAutoResize))
   {
 
-    // atypical calibration popup window
-    if (ImGui::BeginPopupModal("Atypical", NULL,
+    // Camera Calibration Error calibration popup window
+    if (ImGui::BeginPopupModal("Camera Calibration Error", NULL,
                                ImGuiWindowFlags_AlwaysAutoResize))
     {
       ImGui::TextWrapped(
@@ -335,20 +338,20 @@ static void DisplayGui()
     {
       if (ImGui::Button("Select Camera Calibration Video"))
       {
-        configFileSelector = std::make_unique<pfd::open_file>(
+        camera_intrinsics_selector = std::make_unique<pfd::open_file>(
             "Select Camera Calibration Video", "",
             std::vector<std::string>{"Video Files", "*.mp4 *.mov *.m4v *.mkv"},
             pfd::opt::none);
       }
 
-      if (configFileSelector)
+      if (camera_intrinsics_selector)
       {
-        auto selectedFiles = configFileSelector->result();
+        auto selectedFiles = camera_intrinsics_selector->result();
         if (!selectedFiles.empty())
         {
-          selectedConfigFile = selectedFiles[0];
+          selected_camera_intrinsics = selectedFiles[0];
         }
-        configFileSelector.reset();
+        camera_intrinsics_selector.reset();
       }
 
       ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
@@ -363,29 +366,29 @@ static void DisplayGui()
       ImGui::InputDouble("Image Height (pixels)", &imagerHeight);
 
       ImGui::Separator();
-      if (ImGui::Button("Calibrate") && !selectedConfigFile.empty())
+      if (ImGui::Button("Calibrate") && !selected_camera_intrinsics.empty())
       {
         std::cout << "calibration button pressed" << std::endl;
-        int ret = cameracalibration::calibrate(selectedConfigFile.c_str(), squareWidth,
+        int ret = cameracalibration::calibrate(selected_camera_intrinsics.c_str(), squareWidth,
                                                boardWidth, boardHeight, imagerWidth, imagerHeight, true);
         if (ret == 0)
         {
-          size_t lastSeparatorPos = selectedConfigFile.find_last_of("/\\");
+          size_t lastSeparatorPos = selected_camera_intrinsics.find_last_of("/\\");
           std::string output_file_path;
 
           if (lastSeparatorPos != std::string::npos)
           {
-            output_file_path = selectedConfigFile.substr(0, lastSeparatorPos).append("/camera calibration.json");
+            output_file_path = selected_camera_intrinsics.substr(0, lastSeparatorPos).append("/camera calibration.json");
           }
 
-          selectedConfigFile = output_file_path;
+          selected_camera_intrinsics = output_file_path;
           ImGui::CloseCurrentPopup();
         }
         else if (ret == 1)
         {
           std::cout << "calibration failed and popup ready" << std::endl;
           ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_Always);
-          ImGui::OpenPopup("Atypical");
+          ImGui::OpenPopup("Camera Calibration Error");
         }
         else
         {
@@ -397,20 +400,20 @@ static void DisplayGui()
     {
       if (ImGui::Button("Select Camera Calibration Video"))
       {
-        configFileSelector = std::make_unique<pfd::open_file>(
+        camera_intrinsics_selector = std::make_unique<pfd::open_file>(
             "Select Camera Calibration Video", "",
             std::vector<std::string>{"Video Files", "*.mp4 *.mov *.m4v *.mkv"},
             pfd::opt::none);
       }
 
-      if (configFileSelector)
+      if (camera_intrinsics_selector)
       {
-        auto selectedFiles = configFileSelector->result();
+        auto selectedFiles = camera_intrinsics_selector->result();
         if (!selectedFiles.empty())
         {
-          selectedConfigFile = selectedFiles[0];
+          selected_camera_intrinsics = selectedFiles[0];
         }
-        configFileSelector.reset();
+        camera_intrinsics_selector.reset();
       }
 
       ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
@@ -423,29 +426,29 @@ static void DisplayGui()
       ImGui::InputInt("Board Height (squares)", &boardHeight);
 
       ImGui::Separator();
-      if (ImGui::Button("Calibrate") && !selectedConfigFile.empty())
+      if (ImGui::Button("Calibrate") && !selected_camera_intrinsics.empty())
       {
         std::cout << "calibration button pressed" << std::endl;
-        int ret = cameracalibration::calibrate(selectedConfigFile.c_str(), squareWidth, markerWidth,
+        int ret = cameracalibration::calibrate(selected_camera_intrinsics.c_str(), squareWidth, markerWidth,
                                                boardWidth, boardHeight, true);
         if (ret == 0)
         {
-          size_t lastSeparatorPos = selectedConfigFile.find_last_of("/\\");
+          size_t lastSeparatorPos = selected_camera_intrinsics.find_last_of("/\\");
           std::string output_file_path;
 
           if (lastSeparatorPos != std::string::npos)
           {
-            output_file_path = selectedConfigFile.substr(0, lastSeparatorPos).append("/camera calibration.json");
+            output_file_path = selected_camera_intrinsics.substr(0, lastSeparatorPos).append("/camera calibration.json");
           }
 
-          selectedConfigFile = output_file_path;
+          selected_camera_intrinsics = output_file_path;
           ImGui::CloseCurrentPopup();
         }
         else if (ret == 1)
         {
           std::cout << "calibration failed and popup ready" << std::endl;
           ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_Always);
-          ImGui::OpenPopup("Atypical");
+          ImGui::OpenPopup("Camera Calibration Error");
         }
         else
         {
@@ -469,13 +472,13 @@ static void DisplayGui()
 
     if (ImGui::Button("Load Calibrated Field"))
     {
-      calibrationJsonPath = std::make_unique<pfd::open_file>(
-                                "Select Json File", "",
-                                std::vector<std::string>{"JSON Files", "*.json"}, pfd::opt::none)
-                                ->result()[0];
+      calibration_json_path = std::make_unique<pfd::open_file>(
+                                  "Select Json File", "",
+                                  std::vector<std::string>{"JSON Files", "*.json"}, pfd::opt::none)
+                                  ->result()[0];
     }
 
-    if (!calibrationJsonPath.empty())
+    if (!calibration_json_path.empty())
     {
       ImGui::SameLine();
       drawCheck();
@@ -483,13 +486,13 @@ static void DisplayGui()
 
     if (ImGui::Button("Load Reference Field"))
     {
-      selectedFieldMap = std::make_unique<pfd::open_file>(
-                             "Select Json File", "",
-                             std::vector<std::string>{"JSON Files", "*.json"}, pfd::opt::none)
-                             ->result()[0];
+      selected_field_map = std::make_unique<pfd::open_file>(
+                               "Select Json File", "",
+                               std::vector<std::string>{"JSON Files", "*.json"}, pfd::opt::none)
+                               ->result()[0];
     }
 
-    if (!selectedFieldMap.empty())
+    if (!selected_field_map.empty())
     {
       ImGui::SameLine();
       drawCheck();
@@ -518,10 +521,10 @@ static void DisplayGui()
       referenceTag = 16;
     }
 
-    if (!calibrationJsonPath.empty() && !selectedFieldMap.empty())
+    if (!calibration_json_path.empty() && !selected_field_map.empty())
     {
-      std::ifstream calJson(calibrationJsonPath);
-      std::ifstream refJson(selectedFieldMap);
+      std::ifstream calJson(calibration_json_path);
+      std::ifstream refJson(selected_field_map);
 
       currentCalibrationMap = fieldmap(nlohmann::json::parse(calJson));
       currentReferenceMap = fieldmap(nlohmann::json::parse(refJson));

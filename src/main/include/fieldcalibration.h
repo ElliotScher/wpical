@@ -69,13 +69,9 @@ namespace fieldcalibration
       const std::string &path,
       std::map<int, Pose, std::less<int>,
                Eigen::aligned_allocator<std::pair<const int, Pose>>> &poses,
-      std::vector<Constraint, Eigen::aligned_allocator<Constraint>> &constraints);
+      std::vector<Constraint, Eigen::aligned_allocator<Constraint>> &constraints, bool show_debug_window);
   int calibrate(std::string input_dir_path, std::string output_file_path,
                 std::string camera_model_path, std::string ideal_map_path,
-                int pinned_tag_id, int detection_fps);
-
-  int calibrate(std::string input_dir_path, std::string output_file_path,
-                nlohmann::json camera_model, std::string ideal_map_path,
-                int pinned_tag_id, int detection_fps);
+                int pinned_tag_id, int detection_fps, bool show_debug_window);
 }
 #endif // FIELDCALIBRATION_H

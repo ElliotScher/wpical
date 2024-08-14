@@ -61,7 +61,10 @@ int cameracalibration::calibrate(const std::string &input_video, float square_wi
             cv::aruco::drawDetectedCornersCharuco(debug_image, charuco_corners, charuco_ids);
         }
 
-        cv::imshow("Frame", debug_image);
+        if (show_debug_window)
+        {
+            cv::imshow("Frame", debug_image);
+        }
         if (cv::waitKey(1) == 'q')
         {
             break;
@@ -154,9 +157,10 @@ int cameracalibration::calibrate(const std::string &input_video, float square_wi
             all_corners.push_back(corners);
         }
 
-        // Display the frame with detected corners
-        cv::imshow("Checkerboard Detection", frame);
-
+        if (show_debug_window)
+        {
+            cv::imshow("Frame", debug_image);
+        }
         // Exit loop if 'q' is pressed
         if (cv::waitKey(30) == 'q')
         {
