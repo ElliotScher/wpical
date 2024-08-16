@@ -1,6 +1,37 @@
 #include <cameracalibration.h>
 #include <iostream>
 
+bool filter(std::vector<cv::Point2f> charuco_corners, std::vector<int> charuco_ids, std::vector<std::vector<cv::Point2f>> marker_corners, std::vector<int> marker_ids, int board_width, int board_height)
+{
+    if (charuco_ids.empty() || charuco_corners.empty())
+    {
+        return false;
+    }
+
+    if (charuco_corners.size() < 10 || charuco_ids.size() < 10)
+    {
+        return false;
+    }
+
+    for (int i = 0; i < charuco_ids.size(); i++)
+    {
+        if (charuco_ids.at(i) > (board_width - 1) * (board_height - 1) - 1)
+        {
+            return false;
+        }
+    }
+
+    for (int i = 0; i < marker_ids.size(); i++)
+    {
+        if (marker_ids.at(i) > ((board_width * board_height) / 2) - 1)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 int cameracalibration::calibrate(const std::string &input_video, float square_width, float marker_width, int board_width, int board_height, bool show_debug_window)
 {
     // Aruco Board
@@ -22,6 +53,8 @@ int cameracalibration::calibrate(const std::string &input_video, float square_wi
     {
         cv::Mat frame;
         video_capture >> frame;
+
+        cv::Mat debug_image = frame;
 
         if (frame.empty())
         {
@@ -49,17 +82,17 @@ int cameracalibration::calibrate(const std::string &input_video, float square_wi
 
         charuco_detector.detectBoard(frame_gray, charuco_corners, charuco_ids, marker_corners, marker_ids);
 
-        cv::Mat debug_image = frame;
-
-        if (!charuco_ids.empty() && charuco_ids.size() >= 4)
+        if (!filter(charuco_corners, charuco_ids, marker_corners, marker_ids, board_width, board_height))
         {
-            all_corners.insert(all_corners.end(), charuco_corners.begin(), charuco_corners.end());
-            all_ids.insert(all_ids.end(), charuco_ids.begin(), charuco_ids.end());
-            all_counter.push_back(charuco_ids.size());
-
-            cv::aruco::drawDetectedMarkers(debug_image, marker_corners, marker_ids);
-            cv::aruco::drawDetectedCornersCharuco(debug_image, charuco_corners, charuco_ids);
+            continue;
         }
+
+        all_corners.insert(all_corners.end(), charuco_corners.begin(), charuco_corners.end());
+        all_ids.insert(all_ids.end(), charuco_ids.begin(), charuco_ids.end());
+        all_counter.push_back(charuco_ids.size());
+
+        cv::aruco::drawDetectedMarkers(debug_image, marker_corners, marker_ids);
+        cv::aruco::drawDetectedCornersCharuco(debug_image, charuco_corners, charuco_ids);
 
         if (show_debug_window)
         {
@@ -132,9 +165,6 @@ int cameracalibration::calibrate(const std::string &input_video, float square_wi
     std::vector<std::vector<cv::Point2f>> all_corners;
     std::vector<std::vector<int>> all_ids;
 
-    std::vector<cv::Point3f> obj_points;
-    std::vector<cv::Point2f> img_points;
-
     cv::Size boardSize(board_width - 1, board_height - 1);
     cv::Size imagerSize(imagerWidthPixels, imagerHeightPixels);
 
@@ -154,6 +184,8 @@ int cameracalibration::calibrate(const std::string &input_video, float square_wi
         cv::Mat frame_gray;
         cv::cvtColor(frame, frame_gray, cv::COLOR_BGR2GRAY);
 
+        cv::Mat debug_image = frame;
+
         frame_shape = frame_gray.size();
 
         std::vector<cv::Point2f> charuco_corners;
@@ -169,16 +201,16 @@ int cameracalibration::calibrate(const std::string &input_video, float square_wi
 
         charuco_detector.detectBoard(frame_gray, charuco_corners, charuco_ids, marker_corners, marker_ids);
 
-        cv::Mat debug_image = frame;
-
-        if (!charuco_ids.empty() && charuco_ids.size() >= 4)
+        if (!filter(charuco_corners, charuco_ids, marker_corners, marker_ids, board_width, board_height))
         {
-            all_corners.push_back(charuco_corners);
-            all_ids.push_back(charuco_ids);
-
-            cv::aruco::drawDetectedMarkers(debug_image, marker_corners, marker_ids);
-            cv::aruco::drawDetectedCornersCharuco(debug_image, charuco_corners, charuco_ids);
+            continue;
         }
+
+        all_corners.push_back(charuco_corners);
+        all_ids.push_back(charuco_ids);
+
+        cv::aruco::drawDetectedMarkers(debug_image, marker_corners, marker_ids);
+        cv::aruco::drawDetectedCornersCharuco(debug_image, charuco_corners, charuco_ids);
 
         charuco_board->matchImagePoints(charuco_corners, charuco_ids, objectPoints, imagePoints);
 
@@ -204,17 +236,14 @@ int cameracalibration::calibrate(const std::string &input_video, float square_wi
         {
             if (!ids_processed[i])
             {
-                points[i].x = -1.0;
-                points[i].y = -1.0;
-                points[i].z = -1.0;
+                points[i].x = -1.0f;
+                points[i].y = -1.0f;
+                points[i].z = -1.0f;
             }
         }
         std::vector<mrcal_point3_t> points_vector(points, points + sizeof(points) / sizeof(points[0]));
 
         all_points.push_back(points_vector);
-
-        obj_points.insert(obj_points.end(), objectPoints.begin(), objectPoints.end());
-        img_points.insert(img_points.end(), imagePoints.begin(), imagePoints.end());
     }
 
     video_capture.release();

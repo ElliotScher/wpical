@@ -94,8 +94,8 @@ static void DisplayGui()
   static double markerWidth = 0.551;
   static int boardWidth = 12;
   static int boardHeight = 8;
-  static double imagerWidth = 0;
-  static double imagerHeight = 0;
+  static double imagerWidth = 1080;
+  static double imagerHeight = 1920;
 
   static int pinnedTag = 1;
   static int fps = 15;
@@ -448,7 +448,6 @@ static void DisplayGui()
         }
         else if (ret == 1)
         {
-          std::cout << "calibration failed and popup ready" << std::endl;
           ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_Always);
           ImGui::OpenPopup("Camera Calibration Error");
         }
@@ -464,6 +463,7 @@ static void DisplayGui()
     {
       ImGui::CloseCurrentPopup();
     }
+
     ImGui::EndPopup();
   }
 
