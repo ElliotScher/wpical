@@ -174,6 +174,12 @@ int cameracalibration::calibrate(const std::string &input_video, float square_wi
             break;
         }
 
+        // frame_count++;
+        // if (frame_count % 10 != 0)
+        // {
+        //     continue;
+        // }
+
         // Detect
         cv::Mat frame_gray;
         cv::cvtColor(frame, frame_gray, cv::COLOR_BGR2GRAY);
@@ -202,8 +208,8 @@ int cameracalibration::calibrate(const std::string &input_video, float square_wi
         for (int i = 0; i < charuco_ids.size(); i++)
         {
             int id = charuco_ids.at(i);
-            points[id].x = obj_points.at(i).x;
-            points[id].y = obj_points.at(i).y;
+            points[id].x = img_points.at(i).x;
+            points[id].y = img_points.at(i).y;
             points[id].z = 1.0f;
         }
 
@@ -232,16 +238,6 @@ int cameracalibration::calibrate(const std::string &input_video, float square_wi
         {
             break;
         }
-
-        // for (int i = 0; i < points_vector.size(); i++)
-        // {
-        //     if (points_vector.at(i).z == -1.0f)
-        //     {
-        //         std::cout << "Corner ID: " << i << " z val: " << points_vector.at(i).z << std::endl;
-        //     }
-        // }
-
-        // cv::waitKey(0);
     }
 
     video_capture.release();
